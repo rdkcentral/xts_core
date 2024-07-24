@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
 #** *****************************************************************************
 # *
 # * If not stated otherwise in this file or this component's LICENSE file the
@@ -20,14 +19,22 @@
 # * limitations under the License.
 # *
 #* ******************************************************************************
-
-MY_PATH="$(realpath ${BASH_SOURCE[0]})"
-MY_DIR="$(dirname ${MY_PATH})"
-BIN_DIR="${MY_DIR}/bin"
-
-echo "Please run the following commands:" 1>&2
-echo ""
-echo "pip install -r ${MY_DIR}/requirement.txt"
-echo "export PATH=\"${BIN_DIR}:\$PATH\""
-echo ""
-echo "To permanently install this, add the export command as a line in your ~/.bashrc file" 1>&2
+run:
+  description: Run a test
+  hello_world:
+    command: echo "hello world"
+    description: prints hello world into stdout
+  list_demo:
+    command:
+      - echo "Hello"
+      - echo "$@"
+      - echo "Goodbye"
+      - echo "$@"
+    description: Multiple prints taking extra args from the command line
+list:
+  description: list all tests
+  command: for i in $(seq 0 10); do echo "[$i]"; done
+build:
+  description: build some code
+  debug:
+    command:  sc docker run rdk-dunfell 'echo "Building debug"'
