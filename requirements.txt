@@ -1,0 +1,2 @@
+rich>=13.7.1
+git+ssh://git@github.com/rdkcentral/yaml_runner.git@1.0.0
