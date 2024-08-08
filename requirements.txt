@@ -1,2 +1,2 @@
 rich>=13.7.1
-git+ssh://git@github.com/rdkcentral/yaml_runner.git@feature/gh1_creation_of_yaml_runner
+git+ssh://git@github.com/rdkcentral/yaml_runner.git@1.0.0
