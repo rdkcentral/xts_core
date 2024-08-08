@@ -108,7 +108,6 @@ class XTS(YamlRunner):
         if len(sys.argv) > 1:
             if re.search(r'.xts$',sys.argv[1]):
                 self.xts_config = sys.argv[1]
-                # self.program += f' {sys.argv[1]}'
                 self._used_args.append(sys.argv[1])
                 sys.argv.pop(1)
         if self.xts_config is None:

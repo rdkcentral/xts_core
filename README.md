@@ -15,7 +15,7 @@ Run the [install.sh](install.sh) script.
 
 ## Usage
 
-After installation `xts` will be available as a command. This will pick up any file with the extenstion `.xts` and try to use it as it's config.
+After installation, `xts` will be available as a command. This will pick up any file with the extenstion `.xts` and try to use it as its config.
 The layout of the file dictates the commands that become available to use.
 
 **To check which commands are available run `xts --help`**
