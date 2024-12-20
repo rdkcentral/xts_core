@@ -47,6 +47,8 @@ except ImportError:
 
 from yaml_runner import YamlRunner, add_choices_to_help
 
+from xts_allocator_client import XTSAllocatorClient
+
 class XTS(YamlRunner):
     """
     XTS class for managing XTS configuration and running commands.
@@ -66,6 +68,7 @@ class XTS(YamlRunner):
         """
         super().__init__(program='xts')
         self._xts_config = None
+        self._plugins = [XTSAllocatorClient]
 
     @property
     def xts_config(self):
@@ -113,6 +116,7 @@ class XTS(YamlRunner):
         if self.xts_config is None:
             self._find_xts_config()
         parser = self.new_subparser(name='_parse_first_arg')
+        choices = self._get_command_choices()[1]
         parser.add_argument('--help','-h',
                             action='store_true',
                             help='Show the help information',
@@ -120,16 +124,17 @@ class XTS(YamlRunner):
         parser.add_argument('command',
                             action='store',
                             help='The command to run',
-                            choices=list(self.xts_config.keys()),
+                            choices=choices,
                             default=None,
                             metavar='COMMAND')
         help_msg = parser.format_help()
-        help_msg = add_choices_to_help(help_msg, 'COMMAND', list(self.xts_config.keys()))
-        parser.usage = help_msg
+        help_msg = add_choices_to_help(help_msg, 'COMMAND', self._get_command_choices()[0])
+        parser.usage = help_msg.replace('usage: ','')
         parsed_args, remaining = parser.parse_known_args()
-        self.config = {parsed_args.command : self._xts_config.get(parsed_args.command)}
         # Now the command is known we can run a plugin an interrupt the run sequence
-        self._run_plugins(parsed_args.command)
+        self._run_plugins(parsed_args.command, remaining)
+        # If a plugin run the script should exit before reaching this.
+        self.config = {parsed_args.command : self._xts_config.get(parsed_args.command)}
         self._used_args.append(parsed_args.command)
         if parsed_args.help:
             remaining.append('--help')
@@ -146,7 +151,7 @@ class XTS(YamlRunner):
         Raises:
             SystemExit: If no XTS configuration file is found.
         """
-        files = os.listdir(os.getcwd())
+        files = next(os.walk(os.getcwd()))[2]
         xts_configs = []
         for filename in files:
             regex = re.search(r'.xts$',filename)
@@ -155,7 +160,10 @@ class XTS(YamlRunner):
         if len(xts_configs) > 1:
             self._user_select_config(xts_configs)
         elif len(xts_configs) < 1:
-            error('no config found')
+            if len(self._plugins) < 1:
+                error('No config found.')
+            else:
+                warning('No config found. Continuing only with commands from plugins.')
         else:
             self.xts_config = xts_configs[0]
 
@@ -170,13 +178,26 @@ class XTS(YamlRunner):
         Raises:
             SystemExit: Exits with 2 exit code to allow user to re-run the script. 
         """
-        info('Multiple xts file found in the current directory')
+        warning('Multiple xts file found in the current directory')
         print('Please run one of the following commands to choose the file to use\n')
         for filename in choices:
             print(f'\txts {filename} ...')
         raise SystemExit(2)
 
-    def _run_plugins(self,command):
+    def _get_command_choices(self):
+        choices_with_desc = []
+        if self._xts_config:
+            choices_with_desc = list(self.xts_config.keys())
+            for index, choice in enumerate(choices_with_desc.copy()):
+                description = self._xts_config.get(choice).get('description', None)
+                if description:
+                    choices_with_desc[index] = (choice, description)
+        for plugin in self._plugins:
+            choices_with_desc += plugin().provided_args
+        choices_without_desc = list(map(lambda x: x[0] if isinstance(x, tuple) else x, choices_with_desc))
+        return choices_with_desc, choices_without_desc
+
+    def _run_plugins(self, command:str, remaining_args: list):
         """
         Placeholder for future plugin support.
 
@@ -186,8 +207,9 @@ class XTS(YamlRunner):
         Args:
             command (str): The name of the command being executed.
         """
-        # TODO: Add plugin support to xts
-        pass
+        for plugin in self._plugins:
+            if command in plugin().provided_positionals:
+                plugin().run([command].append(remaining_args))
 
     def run(self):
         """
@@ -223,6 +245,15 @@ def error(error_message):
     """
     rich.print(f'[red][bold]ERROR:[/bold] {error_message}[/red]')
     raise SystemExit(1)
+
+def warning(warning_message):
+    """
+    Print an orange warning message.
+
+    Args:
+        warning_message (_type_): _description_
+    """
+    rich.print(f'[dark_orange][bold]{warning_message}[/bold][/dark_orange]')
 
 if __name__ == "__main__":
     XTS().run()
