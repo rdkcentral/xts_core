@@ -9,9 +9,8 @@ import rich
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(dir_path+"/../../")
-sys.path.append(dir_path)
 
-from src.yaml_runner.yaml_runner import add_choices_to_help
+from yaml_runner import add_choices_to_help
 
 class XTSAllocatorClient():
     CONFIG_FILE = os.path.expanduser("~/.xts_servers.yaml")
