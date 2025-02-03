@@ -47,7 +47,7 @@ except ImportError:
 
 from yaml_runner import YamlRunner, add_choices_to_help
 
-from xts_allocator_client import XTSAllocatorClient
+from plugins import XTSAllocatorClient
 
 class XTS(YamlRunner):
     """

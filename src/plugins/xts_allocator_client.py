@@ -115,24 +115,31 @@ class XTSAllocatorClient():
         allocator_choices = [('list', 'List all known allocators'),
                              ('add', 'Add an allocator server'),
                              ('remove', 'Remove an allocator server')]
+        
+        # extract only the command names for argparse choices
+        allocator_commands = [cmd[0] for cmd in allocator_choices]
+
+        # manually add help argument since add_help=False
+        allocator_parser.add_argument("-h", "--help", 
+                                      action="help", 
+                                      help="Show the help information")
+        
         allocator_parser.add_argument('command',
-                                      action='store',
+                                      choices=allocator_commands,  # Only command names
                                       help='The command to run',
-                                      choices=allocator_choices,
-                                      default=None,
                                       metavar='COMMAND')
+        
         allocator_parser.add_argument('--server', 
                                       help='Server URL for add/remove commands.')
         
-        # allocator_parser.usage =  add_choices_to_help(allocator_parser.format_help(),
-        #                                               'COMMAND',
-        #                                               allocator_choices).replace('usage: ','')
-        # parsed_args, remaining_args = allocator_parser.parse_known_args(args)
-        
+        if not args:
+            allocator_parser.print_help()
+            sys.exit(0)
+
+
         parsed_args = allocator_parser.parse_args(args)
         servers = self.load_servers()
         
-        # print('allocator ' + ' '.join(args))
         
         if parsed_args.command == 'add':
             if parsed_args.server not in servers:
