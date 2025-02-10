@@ -185,16 +185,37 @@ class XTS(YamlRunner):
         raise SystemExit(2)
 
     def _get_command_choices(self):
+        """
+        Retrieves available command choices from the XTS configuration and plugins.
+        It extracts command names from the loaded XTS configuration file.
+        If a command has a description, it stores it as a tuple (command, description).
+        Additionally, it collects commands provided by loaded plugins.
+
+        Returns:
+            tuple:
+                - choices_with_desc (list): A list of available commands, with descriptions as tuples (command, description) where applicable.
+                - choices_without_desc (list): A flat list containing only the command names.
+        """
         choices_with_desc = []
+
         if self._xts_config:
-            choices_with_desc = list(self.xts_config.keys())
-            for index, choice in enumerate(choices_with_desc.copy()):
-                description = self._xts_config.get(choice).get('description', None)
+            for command, details in self.xts_config.items():
+                description = details.get('description')
                 if description:
-                    choices_with_desc[index] = (choice, description)
+                    choices_with_desc.append((command, description))  #store as tuple (command, description)
+                else:
+                    choices_with_desc.append(command)  #store as a plain string
+
+        #additional commands provided by plugins
         for plugin in self._plugins:
-            choices_with_desc += plugin().provided_args
-        choices_without_desc = list(map(lambda x: x[0] if isinstance(x, tuple) else x, choices_with_desc))
+            choices_with_desc.extend(plugin().provided_args)
+
+        # Extract command names without descriptions for easier reference
+        choices_without_desc = [
+            command if isinstance(command, str) else command[0]
+            for command in choices_with_desc
+        ]
+
         return choices_with_desc, choices_without_desc
 
     def _run_plugins(self, command:str, remaining_args: list):
