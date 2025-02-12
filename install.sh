@@ -25,6 +25,8 @@ MY_PATH="$(realpath ${BASH_SOURCE[0]})"
 MY_DIR="$(dirname ${MY_PATH})"
 BIN_DIR="${MY_DIR}/bin"
 
+# Deliberately redirect instructions to stderr so commands
+# can be run using eval. e.g. eval "$(./install.sh)"
 echo "Please run the following commands:" 1>&2
 echo ""
 echo "pip install -r ${MY_DIR}/requirements.txt"
