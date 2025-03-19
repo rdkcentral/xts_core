@@ -30,11 +30,6 @@ class XTSAllocatorClient():
         ('deallocate', 'Free an allocated slot.'),
         ('dealloc', 'Alias of deallocate'),
         ('free', 'Alias of deallocate'),
-        ('search', 'Search available slots.'),
-        ('list', 'List all slots.'),
-        ('add-slot', 'Add a new slot to the allocator server.'),
-        ('update-slot', 'Update a slot from the allocator server'),
-        ('remove-slot', 'Remove a slot from the allocator server.')
     ]
 
     def __init__(self):
@@ -121,16 +116,6 @@ class XTSAllocatorClient():
             self._allocator(remaining_args)
         elif parsed_args.command in ('deallocate', 'dealloc', 'free'):
             self._deallocate_slot(remaining_args)
-        elif parsed_args.command == 'search':
-            self._search_slots(remaining_args)
-        elif parsed_args.command == 'list':
-            self._list_slots(remaining_args)
-        elif parsed_args.command in ('add-slot', 'allocator add-slot'):
-            self._add_slot(remaining_args)
-        elif parsed_args.command in ('update-slot', 'allocator update-slot'):
-            self._update_slot(remaining_args)
-        elif parsed_args.command in ('remove-slot', 'allocator remove-slot'):
-            self._remove_slot(remaining_args)
         else:
             print(self._initial_help)
         raise SystemExit(0)
@@ -226,7 +211,8 @@ class XTSAllocatorClient():
             args (list): Command-line arguments.
         """
         allocator_parser = self._subparsers.add_parser('allocator', add_help=False)
-        allocator_choices = [('list', 'List all known allocators'),
+        allocator_choices = [('search', 'Search for slots on an allocatr server')
+                             ('list', 'List all known allocators'),
                              ('add', 'Add an allocator server'),
                              ('remove', 'Remove an allocator server')]
         
@@ -279,6 +265,31 @@ class XTSAllocatorClient():
             else:
                 rich.print("[yellow]No servers configured.[/yellow]")
 
+        elif parsed_args.command == 'search':
+            if not parsed_args.server:
+                rich.print("[red]Error: --server is required for search.[/red]")
+                raise SystemExit(1)
+
+            search_filters = {}
+            if parsed_args.platform:
+                search_filters["platform"] = parsed_args.platform
+            if parsed_args.description:
+                search_filters["description"] = parsed_args.description
+            if parsed_args.tags:
+                search_filters["tags"] = parsed_args.tags
+
+            response = self.send_request("POST", f"{parsed_args.server}/list_slots", search_filters)
+
+            if response and "slots" in response:
+                slots = response["slots"]
+                if slots:
+                    rich.print("[blue]Matching slots:[/blue]")
+                    for slot in slots:
+                        rich.print(f" - {slot['rackName']} / {slot['slotName']} - {slot['description']} - Tags: {', '.join(slot['tags'])}")
+                else:
+                    rich.print("[yellow]No matching slots found.[/yellow]")
+            else:
+                rich.print("[red]Error retrieving slots.[/red]")
 
     def _deallocate_slot(self, args: list):
         """
@@ -402,19 +413,25 @@ class XTSAllocatorClient():
 
         parsed_args = update_slot_parser.parse_args(args)
 
+        # Ensure at least one field is being updated
+        if not any([parsed_args.rackName, parsed_args.slotName, parsed_args.description, parsed_args.tags,
+                    parsed_args.platform, parsed_args.state, parsed_args.owner_email]):
+            rich.print("[red]Error: At least one field must be provided for update.[/red]")
+            sys.exit(1)
+
+        # Required fields
         payload = {
             "slot_id": parsed_args.slot_id,
-            "rackName": parsed_args.rackName,
-            "slotName": parsed_args.slotName,
-            "description": parsed_args.description,
-            "tags": parsed_args.tags if parsed_args.tags else [],
-            "platform": parsed_args.platform,
-            "state": parsed_args.state,
-            "owner_email": parsed_args.owner_email
+            "server": parsed_args.server
         }
-        
-        # Remove keys with None values
-        payload = {k: v for k, v in payload.items() if v is not None}
+
+        # Optional fields
+        optional_fields = ["rackName", "slotName", "description", "tags", "platform", "state", "owner_email"]
+
+        for field in optional_fields:
+            value = getattr(parsed_args, field)
+            if value is not None:
+                payload[field] = value
 
         response = self.send_request("POST", f"{parsed_args.server}/update_slot", payload)
 
