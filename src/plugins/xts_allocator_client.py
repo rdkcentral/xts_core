@@ -125,11 +125,11 @@ class XTSAllocatorClient():
             self._search_slots(remaining_args)
         elif parsed_args.command == 'list':
             self._list_slots(remaining_args)
-        elif parsed_args.command == 'add-slot':
+        elif parsed_args.command in ('add-slot', 'allocator add-slot'):
             self._add_slot(remaining_args)
-        elif parsed_args.command == "update-slot":
+        elif parsed_args.command in ('update-slot', 'allocator update-slot'):
             self._update_slot(remaining_args)
-        elif parsed_args.command == 'remove-slot':
+        elif parsed_args.command in ('remove-slot', 'allocator remove-slot'):
             self._remove_slot(remaining_args)
         else:
             print(self._initial_help)
@@ -360,7 +360,7 @@ class XTSAllocatorClient():
         add_slot_parser.add_argument('--slotName', required=True, help='Slot name.')
         add_slot_parser.add_argument('--description', help='Description of the slot.')
         add_slot_parser.add_argument('--tags', nargs='+', help='Tags for the slot.')
-        add_slot_parser.add_argument('--platform', help='Platform associated with the slot.')
+        add_slot_parser.add_argument('--platform', required=True, help='Platform associated with the slot.')
         add_slot_parser.add_argument('--state', choices=['free', 'allocated'], default='free', help='State of the slot.')
         add_slot_parser.add_argument('--owner_email', help='Owner email (if allocated).')
         add_slot_parser.add_argument('--server', required=True, help='Allocator server address.')
@@ -401,12 +401,6 @@ class XTSAllocatorClient():
         update_slot_parser.add_argument('--server', required=True, help='Allocator server address.')
 
         parsed_args = update_slot_parser.parse_args(args)
-
-        # Ensure at least one field is being updated
-        if not any([parsed_args.rackName, parsed_args.slotName, parsed_args.description, parsed_args.tags,
-                    parsed_args.platform, parsed_args.state, parsed_args.owner_email]):
-            rich.print("[red]Error: At least one field must be provided for update.[/red]")
-            sys.exit(1)
 
         payload = {
             "slot_id": parsed_args.slot_id,
