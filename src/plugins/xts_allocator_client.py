@@ -30,8 +30,6 @@ class XTSAllocatorClient():
         ('deallocate', 'Free an allocated slot.'),
         ('dealloc', 'Alias of deallocate'),
         ('free', 'Alias of deallocate'),
-        ('search', 'Search available slots.'),
-        ('list', 'List all slots.')
     ]
 
     def __init__(self):
@@ -118,10 +116,6 @@ class XTSAllocatorClient():
             self._allocator(remaining_args)
         elif parsed_args.command in ('deallocate', 'dealloc', 'free'):
             self._deallocate_slot(remaining_args)
-        elif parsed_args.command == 'search':
-            self._search_slots(remaining_args)
-        elif parsed_args.command == 'list':
-            self._list_slots(remaining_args)
         else:
             print(self._initial_help)
         raise SystemExit(0)
@@ -217,10 +211,14 @@ class XTSAllocatorClient():
             args (list): Command-line arguments.
         """
         allocator_parser = self._subparsers.add_parser('allocator', add_help=False)
-        allocator_choices = [('list', 'List all known allocators'),
+        allocator_choices = [('search', 'Search for slots on an allocator server'),
+                             ('list', 'List all known allocators'),
                              ('add', 'Add an allocator server'),
-                             ('remove', 'Remove an allocator server')]
-        
+                             ('remove', 'Remove an allocator server'),
+                             ('add-slot', 'Add a slot to the allocator server'),
+                             ('update-slot', 'Update an existing slot on the allocator server'),
+                             ('remove-slot', 'Remove a slot from the allocator server')]
+
         # extract only the command names for argparse choices
         allocator_commands = [cmd[0] for cmd in allocator_choices]
 
@@ -241,8 +239,7 @@ class XTSAllocatorClient():
             allocator_parser.print_help()
             raise SystemExit(0)
 
-
-        parsed_args = allocator_parser.parse_args(args)
+        parsed_args, remaining_args = allocator_parser.parse_known_args(args)
         servers = self.load_servers()
         
         
@@ -269,6 +266,41 @@ class XTSAllocatorClient():
                     rich.print(f" - {server}")
             else:
                 rich.print("[yellow]No servers configured.[/yellow]")
+
+        elif parsed_args.command == 'search':
+            if not parsed_args.server:
+                rich.print("[red]Error: --server is required for search.[/red]")
+                raise SystemExit(1)
+
+            search_filters = {}
+            if parsed_args.platform:
+                search_filters["platform"] = parsed_args.platform
+            if parsed_args.description:
+                search_filters["description"] = parsed_args.description
+            if parsed_args.tags:
+                search_filters["tags"] = parsed_args.tags
+
+            response = self.send_request("POST", f"{parsed_args.server}/list_slots", search_filters)
+
+            if response and "slots" in response:
+                slots = response["slots"]
+                if slots:
+                    rich.print("[blue]Matching slots:[/blue]")
+                    for slot in slots:
+                        rich.print(f" - {slot['rackName']} / {slot['slotName']} - {slot['description']} - Tags: {', '.join(slot['tags'])}")
+                else:
+                    rich.print("[yellow]No matching slots found.[/yellow]")
+            else:
+                rich.print("[red]Error retrieving slots.[/red]")
+
+        elif parsed_args.command == 'add-slot':
+            self._add_slot(parsed_args.server, remaining_args)
+
+        elif parsed_args.command == 'update-slot':
+            self._update_slot(parsed_args.server, remaining_args)
+
+        elif parsed_args.command == 'remove-slot':
+            self._remove_slot(parsed_args.server, remaining_args)
 
 
     def _deallocate_slot(self, args: list):
@@ -338,6 +370,112 @@ class XTSAllocatorClient():
         response = self.send_request("GET", f"{parsed_args.server}/list")
         if response:
             rich.print(f"[green]Available slots: {response}[/green]")
+    
+    def _add_slot(self, server, args: list):
+        """
+        Add a new slot to the allocator server.
+
+        Args:
+            args (list): Command-line arguments.
+        """
+        add_slot_parser = self._subparsers.add_parser('add-slot')
+        add_slot_parser.add_argument('--rackName', required=True, help='Rack name of the slot.')
+        add_slot_parser.add_argument('--slotName', required=True, help='Slot name.')
+        add_slot_parser.add_argument('--description', help='Description of the slot.')
+        add_slot_parser.add_argument('--tags', nargs='+', help='Tags for the slot.')
+        add_slot_parser.add_argument('--platform', required=True, help='Platform associated with the slot.')
+        add_slot_parser.add_argument('--state', choices=['free', 'allocated'], default='free', help='State of the slot.')
+        add_slot_parser.add_argument('--owner_email', help='Owner email (if allocated).')
+
+        parsed_args = add_slot_parser.parse_args(args)
+
+        if not server or not parsed_args.rackName or not parsed_args.slotName or not parsed_args.platform:
+            rich.print("[red]Error: --server, --rackName, --slotName, and --platform are required for add-slot.[/red]")
+            raise SystemExit(1)
+        
+        payload = {
+            "rackName": parsed_args.rackName,
+            "slotName": parsed_args.slotName,
+            "description": parsed_args.description or "",
+            "tags": parsed_args.tags if parsed_args.tags else [],
+            "platform": parsed_args.platform or "",
+            "state": parsed_args.state,
+            "owner_email": parsed_args.owner_email or None,
+        }
+
+        response = self.send_request("POST", f"{parsed_args.server}/add_slot", payload)
+        
+        if response:
+            rich.print(f"[green]Slot added successfully: {response}[/green]")
+
+    def _update_slot(self, server, args: list):
+        """
+        Update an existing slot in the allocator server.
+
+        Args:
+            args (list): Command-line arguments.
+        """
+        update_slot_parser = self._subparsers.add_parser('update-slot')
+        update_slot_parser.add_argument('--slot_id', required=True, type=int, help='ID of the slot to update.')
+        update_slot_parser.add_argument('--rackName', help='New rack name.')
+        update_slot_parser.add_argument('--slotName', help='New slot name.')
+        update_slot_parser.add_argument('--description', help='Updated description of the slot.')
+        update_slot_parser.add_argument('--tags', nargs='+', help='Updated tags for the slot.')
+        update_slot_parser.add_argument('--platform', help='Updated platform associated with the slot.')
+        update_slot_parser.add_argument('--state', choices=['free', 'allocated'], help='Updated state of the slot.')
+        update_slot_parser.add_argument('--owner_email', help='Updated owner email.')
+
+        parsed_args = update_slot_parser.parse_args(args)
+
+        if not server or not args.slot_id:
+            rich.print("[red]Error: --server and --slot_id are required for update-slot.[/red]")
+            raise SystemExit(1)
+
+        if not any([parsed_args.rackName, parsed_args.slotName, parsed_args.description, parsed_args.tags,
+                    parsed_args.platform, parsed_args.state, parsed_args.owner_email]):
+            rich.print("[red]Error: At least one field must be provided for update.[/red]")
+            sys.exit(1)
+
+        # Required fields
+        payload = {
+            "slot_id": parsed_args.slot_id,
+            "server": parsed_args.server
+        }
+
+        # Optional fields
+        optional_fields = ["rackName", "slotName", "description", "tags", "platform", "state", "owner_email"]
+
+        for field in optional_fields:
+            value = getattr(parsed_args, field)
+            if value is not None:
+                payload[field] = value
+
+        response = self.send_request("POST", f"{parsed_args.server}/update_slot", payload)
+
+        if response:
+            rich.print(f"[green]Slot updated successfully: {response}[/green]")
+
+    def _remove_slot(self, server, args: list):
+        """
+        Remove a slot from the allocator server.
+
+        Args:
+            args (list): Command-line arguments.
+        """
+        remove_slot_parser = self._subparsers.add_parser('remove-slot')
+        remove_slot_parser.add_argument('--slot_id', required=True, type=int, help='ID of the slot to remove.')
+
+        parsed_args = remove_slot_parser.parse_args(args)
+
+        if not server or not parsed_args.slot_id:
+            rich.print("[red]Error: --server and --slot_id are required for remove-slot.[/red]")
+            raise SystemExit(1)
+
+        payload = {"slot_id": parsed_args.slot_id}
+        response = self.send_request("POST", f"{parsed_args.server}/delete_slot", payload)
+
+        if response:
+            rich.print(f"[green]Slot removed successfully: {response}[/green]")
 
 if __name__ == '__main__':
     import sys
