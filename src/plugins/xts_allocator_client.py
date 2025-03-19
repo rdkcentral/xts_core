@@ -293,12 +293,6 @@ class XTSAllocatorClient():
 
         parsed_args = deallocate_parser.parse_args(args)
         
-        # if parsed_args.id is None:
-        #     rich.print('[red][bold]ID argument required.[/bold][/red]')
-        #     deallocate_parser.print_help()
-        #     raise SystemExit(1)
-        # # TODO: Format args into json and post to /deallocate endpoint or requested server
-
         payload = {"id": parsed_args.id}
         response = self.send_request("DELETE", f"{parsed_args.server}/deallocate", payload)
         if response:
