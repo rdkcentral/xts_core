@@ -1,16 +1,14 @@
 # XTS Core Test Specification #
 
-This document defines the expected behavior of XTS core across different use cases, including its interaction with .xts files and the allocator client.
-
+This document defines the expected behavior of XTS core across different use cases, including its interaction with .xts files and YAML file execution.
 
 The test specification covers the following scenarios:
+
 - Usage with structured and unstructured .xts files
 
 - Operation without .xts files
 
-- Execution with and without the YAML runner
-
-- Interaction with the allocator client
+- Execution with YAML files.
 
 ### Handling of .xts Files ###
 
@@ -48,19 +46,22 @@ Expected Behavior:
 
 - Execution should be halted or fallback behavior should be triggered.
 
-### YAML Runner Usage ###
+### YAML File Execution in XTS ###
 
-#### Execution with YAML Runner ####
+#### Executing an .xts YAML File ####
 
-Preconditions: The YAML runner is available and configured.
+Preconditions: 
+
+- A valid .xts file (e.g., hello_world.xts) is present in the current directory or specified path.
+
+- The .xts file defines commands and test steps under keys such as run, list, or build.
 
 Expected Behavior:
 
-- XTS should correctly interpret YAML test definitions.
+- XTS loads the .xts file and parses available sections (run, list, build, etc.).
 
-- Test cases should execute as defined in the YAML files.
-
-- Logs should indicate successful parsing and execution.
+- Users can run commands defined in the YAML by specifying the appropriate subcommand.
+(e.g. ` xts run hello_world ` will execute: ` echo "hello world" `)
 
 #### Execution without YAML Runner ####
 
@@ -71,31 +72,6 @@ Expected Behavior:
 - XTS should operate without dependency on the YAML runner.
 
 - Other test execution methods should remain functional.
-
-### Allocator Client Interaction ###
-
-#### Execution with Allocator Client ####
-
-Preconditions: Allocator client is available and properly configured.
-
-Expected Behavior:
-
-- XTS should integrate with the allocator client correctly.
-
-- Resource allocation should be managed efficiently.
-
-- No resource leaks or mismanagement should occur.
-
-#### Execution without Allocator Client ####
-
-Preconditions: Allocator client is not used.
-
-Expected Behavior:
-
-- XTS should function without reliance on the allocator client.
-
-- Tests should execute without resource allocation errors.
-
 
 ## XTSAllocatorClient Commands ##
 
@@ -127,19 +103,19 @@ Expected Result:
 
 - Rack configuration is retrieved and displayed.
 
-#### Allocation Failure ####
+#### Allocate Slot with Platform and No Tags ####
 
 Command: allocate --platform linux --server http://allocator-server
 
 Expected Result:
 
-- If the server returns an error, the appropriate message is displayed.
+- The request is sent to http://allocator-server/allocate with payload { "platform": "linux" }
 
-- Exit with non-zero status.
+- The response contains slot_id.
+
+- Rack configuration is retrieved and displayed.
 
 ### Deallocate Slot ###
-
-#### Deallocate Slot by ID ####
 
 Command: deallocate --id 123 --server http://allocator-server
 
@@ -153,21 +129,21 @@ Expected Result:
 
 #### Add Allocator Server ####
 
-Command: allocator add --server http://allocator-server
+Command: allocator add test_allocator http://allocator-server
 
 Expected Result:
 
-- The server is added to the configuration file.
+- The server is added to the configuration file under the name test_allocator.
 
 - Success message is displayed.
 
 #### Remove Allocator Server ####
 
-Command: allocator remove --server http://allocator-server
+Command: allocator remove test_allocator
 
 Expected Result:
 
-- The server is removed from the configuration file.
+- The entry for test_allocator is removed from the configuration file.
 
 - Success message is displayed.
 
@@ -189,7 +165,7 @@ Command: allocator add-slot --rackName R1 --slotName S1 --platform linux --serve
 
 Expected Result:
 
-- The request is sent to http://allocator-server/add_slot with relevant payload.
+- The request is sent to http://allocator-server/add_slot with payload { "rackName": R1, "slotName": "S1", "platform": "linux"}
 
 - The response confirms slot creation.
 
@@ -199,7 +175,7 @@ Command: allocator update-slot --slot_id 123 --platform windows --server http://
 
 Expected Result:
 
-- The request is sent to http://allocator-server/update_slot with updated fields.
+- The request is sent to http://allocator-server/update_slot with payload { "slot_id": 123, "platform": "windows"}
 
 - The response confirms slot update.
 
@@ -221,38 +197,20 @@ Command: allocator search --platform linux --tags gpu --server http://allocator-
 
 Expected Result:
 
-- The request is sent to http://allocator-server/list_slots.
+- The request is sent to http://allocator-server/search with payload { "platform": "linux", "tags": ["gpu", "memory"] }
 
 - Matching slots are displayed.
 
+#### List All Allocator Slots ####
+
+Command: allocator list --server http://allocator-server
+
+Expected Result:
+
+- The request is sent to http://allocator-server/list.
+
+- The response contains all available slots known to the server.
+
 ### Error Handling Tests ###
 
-#### Missing Required Arguments ####
-
-Command: allocate --tags gpu --server http://allocator-server
-
-Expected Result:
-
-- Error message: --platform is required when --tags is specified.
-
-- Exit with non-zero status.
-
-#### Invalid Server URL ####
-
-Command: allocate --id 123 --server http://invalid-server
-
-Expected Result:
-
-- Request fails.
-
-- Error message is displayed.
-
-#### Command Not Found ####
-
-Command: invalid-command
-
-Expected Result:
-
-- Error message: Command not recognized.
-
-- Exit with non-zero status.
+TBD

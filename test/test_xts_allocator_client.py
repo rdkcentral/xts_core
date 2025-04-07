@@ -68,21 +68,21 @@ def test_invalid_allocate_missing_platform(mock_client):
 
 def test_allocator_add_server(mock_client):
     # Test adding an allocator server
-    args = ['allocator', 'add', '--server', 'http://allocator-server']
+    args = ['allocator', 'add', 'test_allocator', 'http://allocator-server']
     with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
         with pytest.raises(SystemExit):
             mock_client.run(args)
         output = mock_stdout.getvalue()
-        assert "Server added: http://allocator-server" in output
+        assert "Server added: test_allocator" in output
 
 def test_allocator_remove_server(mock_client):
     # Test removing an allocator server
-    args = ['allocator', 'remove', '--server', 'http://allocator-server']
+    args = ['allocator', 'remove', 'test_allocator']
     with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
         with pytest.raises(SystemExit):
             mock_client.run(args)
         output = mock_stdout.getvalue()
-        assert "Server removed: http://allocator-server" in output
+        assert "Server removed: test_allocator" in output
 
 def test_allocator_list_servers(mock_client):
     # Test listing allocator servers (empty configuration)
