@@ -210,30 +210,60 @@ class XTSAllocatorClient():
         Args:
             args (list): Command-line arguments.
         """
+
         allocator_parser = self._subparsers.add_parser('allocator', add_help=False)
-        allocator_choices = [('search', 'Search for slots on an allocator server'),
-                             ('list', 'List all known allocators'),
-                             ('add', 'Add an allocator server'),
-                             ('remove', 'Remove an allocator server'),
-                             ('add-slot', 'Add a slot to the allocator server'),
-                             ('update-slot', 'Update an existing slot on the allocator server'),
-                             ('remove-slot', 'Remove a slot from the allocator server')]
+        allocator_parser.add_argument("-h", "--help", action="help", help="Show help information")
 
-        # extract only the command names for argparse choices
-        allocator_commands = [cmd[0] for cmd in allocator_choices]
+        allocator_subparsers = allocator_parser.add_subparsers(dest='command', required=True, metavar='COMMAND')
 
-        # manually add help argument since add_help=False
-        allocator_parser.add_argument("-h", "--help", 
-                                      action="help", 
-                                      help="Show the help information")
+        # add
+        add_parser = allocator_subparsers.add_parser('add', help='Add an allocator server')
+        add_parser.add_argument('name', help='Name for the allocator server')
+        add_parser.add_argument('url', help='URL for the allocator server')
+
+        # remove
+        remove_parser = allocator_subparsers.add_parser('remove', help='Remove an allocator server')
+        remove_parser.add_argument('name', help='Name of the server to remove')
+
+        # list
+        allocator_subparsers.add_parser('list', help='List all known allocators')
+
+        # search
+        search_parser = allocator_subparsers.add_parser('search', help='Search for slots on an allocator server')
+        search_parser.add_argument('--server', required=True, help='Server URL')
+        search_parser.add_argument('--platform', help='Filter by platform')
+        search_parser.add_argument('--description', help='Filter by description')
+        search_parser.add_argument('--tags', nargs='+', help='Filter by tags')
+
+        # add-slot, update-slot, remove-slot
+        allocator_subparsers.add_parser('add-slot', help='Add a slot to the allocator server')
+        allocator_subparsers.add_parser('update-slot', help='Update an existing slot on the allocator server')
+        allocator_subparsers.add_parser('remove-slot', help='Remove a slot from the allocator server')
         
-        allocator_parser.add_argument('command',
-                                      choices=allocator_commands,  # Only command names
-                                      help='The command to run',
-                                      metavar='COMMAND')
+        # allocator_parser = self._subparsers.add_parser('allocator', add_help=False)
+        # allocator_choices = [('search', 'Search for slots on an allocator server'),
+        #                      ('list', 'List all known allocators'),
+        #                      ('add', 'Add an allocator server'),
+        #                      ('remove', 'Remove an allocator server'),
+        #                      ('add-slot', 'Add a slot to the allocator server'),
+        #                      ('update-slot', 'Update an existing slot on the allocator server'),
+        #                      ('remove-slot', 'Remove a slot from the allocator server')]
+
+        # # extract only the command names for argparse choices
+        # allocator_commands = [cmd[0] for cmd in allocator_choices]
+
+        # # manually add help argument since add_help=False
+        # allocator_parser.add_argument("-h", "--help", 
+        #                               action="help", 
+        #                               help="Show the help information")
         
-        allocator_parser.add_argument('--server', 
-                                      help='Server URL for add/remove commands.')
+        # allocator_parser.add_argument('command',
+        #                               choices=allocator_commands,  # Only command names
+        #                               help='The command to run',
+        #                               metavar='COMMAND')
+        
+        # allocator_parser.add_argument('--server', 
+        #                               help='Server URL for add/remove commands.')
         
         if not args:
             allocator_parser.print_help()
@@ -244,26 +274,29 @@ class XTSAllocatorClient():
         
         
         if parsed_args.command == 'add':
-            if parsed_args.server not in servers:
-                servers[parsed_args.server] = {}
+            name = parsed_args.name
+            url = parsed_args.url
+            if name not in servers:
+                servers[name] = {"url": url}
                 self.save_servers(servers)
-                rich.print(f"[green]Server added: {parsed_args.server}[/green]")
+                rich.print(f"[green]Server added: {parsed_args.name} -> {parsed_args.url}[/green]")
             else:
-                rich.print(f"[yellow]Server already exists: {parsed_args.server}[/yellow]")
+                rich.print(f"[yellow]Server already exists: {parsed_args.name}[/yellow]")
 
         elif parsed_args.command == 'remove':
-            if parsed_args.server in servers:
-                del servers[parsed_args.server]
+            name = parsed_args.name
+            if name in servers:
+                del servers[name]
                 self.save_servers(servers)
-                rich.print(f"[green]Server removed: {parsed_args.server}[/green]")
+                rich.print(f"[green]Server removed: {parsed_args.name}[/green]")
             else:
-                rich.print(f"[red]Server not found: {parsed_args.server}[/red]")
+                rich.print(f"[red]Server not found: {parsed_args.name}[/red]")
 
         elif parsed_args.command == 'list':
             if servers:
                 rich.print("[blue]Configured servers:[/blue]")
-                for server in servers.keys():
-                    rich.print(f" - {server}")
+                for name, info in servers.items():
+                    rich.print(f" - {name}: {info.get('url', 'N/A')}")
             else:
                 rich.print("[yellow]No servers configured.[/yellow]")
 
