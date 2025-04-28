@@ -8,7 +8,9 @@ The test specification covers the following scenarios:
 
 - Operation without .xts files
 
-- Execution with YAML files.
+- Execution with YAML files. 
+  
+  _<small>(only .xts YAML files are supported; generic .yaml or .yml files are not supported)</small>_
 
 ### Handling of .xts Files ###
 
@@ -40,11 +42,23 @@ Preconditions: No .xts file is provided.
 
 Expected Behavior:
 
-- XTS should handle the missing file gracefully.
+- XTS should log a clear error message indicating the file is missing.
 
-- A clear error message should be logged.
+- Execution of .xts test cases should not proceed.
 
-- Execution should be halted or fallback behavior should be triggered.
+- AllocatorClient commands should remain functional and usable.
+
+#### Multiple .xts Files ####
+
+Preconditions: More than one .xts file is present in the working directory.
+
+Expected Behavior:
+
+- XTS should detect the presence of multiple .xts files.
+
+- An error message should be logged, listing the found files.
+
+- The user should be shown how to run each file individually using the appropriate command.
 
 ### YAML File Execution in XTS ###
 
@@ -73,7 +87,7 @@ Expected Behavior:
 
 - Other test execution methods should remain functional.
 
-## XTSAllocatorClient Commands ##
+## XTS AllocatorClient Commands ##
 
 The following test cases cover the XTSAllocatorClient command-line interface interactions. The tests ensure correct behavior for all supported commands, including slot allocation, deallocation, and allocator server management.
 
