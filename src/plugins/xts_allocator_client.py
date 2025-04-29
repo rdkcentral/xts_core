@@ -237,8 +237,6 @@ class XTSAllocatorClient():
 
         # add-slot, update-slot, remove-slot
         add_slot_parser = allocator_subparsers.add_parser('add-slot', help='Add a slot to the allocator server')
-        add_slot_parser.add_argument('--server', required=True, help='Allocator server address.')  # <- ADD THIS
-
         add_slot_parser.add_argument('--rackName', required=True, help='Rack name of the slot.')
         add_slot_parser.add_argument('--slotName', required=True, help='Slot name.')
         add_slot_parser.add_argument('--description', help='Description of the slot.')
