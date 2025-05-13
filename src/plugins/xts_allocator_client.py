@@ -70,6 +70,10 @@ class XTSAllocatorClient():
             dict: The JSON response from the server if successful.
             None: If the request fails.
         """
+        if not url.startswith(('http://', 'https://')):
+            url = f'http://{url}'
+        rich.print(f"[yellow]Sending request to: {url}[/yellow]")
+            
         try:
             response = requests.request(method, url, json=data)
             response.raise_for_status()
@@ -244,6 +248,7 @@ class XTSAllocatorClient():
         add_slot_parser.add_argument('--platform', required=True, help='Platform associated with the slot.')
         add_slot_parser.add_argument('--state', choices=['free', 'allocated'], default='free', help='State of the slot.')
         add_slot_parser.add_argument('--owner_email', help='Owner email (if allocated).')
+        add_slot_parser.add_argument('--server', required=True, help='Allocator server address.')
 
         update_slot_parser= allocator_subparsers.add_parser('update-slot', help='Update an existing slot on the allocator server')
         update_slot_parser.add_argument('--slot_id', required=True, type=int, help='ID of the slot to update.')
@@ -254,9 +259,11 @@ class XTSAllocatorClient():
         update_slot_parser.add_argument('--platform', help='Updated platform associated with the slot.')
         update_slot_parser.add_argument('--state', choices=['free', 'allocated'], help='Updated state of the slot.')
         update_slot_parser.add_argument('--owner_email', help='Updated owner email.')
+        update_slot_parser.add_argument('--server', required=True, help='Allocator server address.')  # Add this line
 
         remove_slot_parser = allocator_subparsers.add_parser('remove-slot', help='Remove a slot from the allocator server')
         remove_slot_parser.add_argument('--slot_id', required=True, type=int, help='ID of the slot to remove.')
+        remove_slot_parser.add_argument('--server', required=True, help='Allocator server address.')  # Add this line
 
         
         if not args:
@@ -321,13 +328,13 @@ class XTSAllocatorClient():
                 rich.print("[red]Error retrieving slots.[/red]")
 
         elif parsed_args.command == 'add-slot':
-            self._add_slot(parsed_args.server, remaining_args)
+            self._add_slot(parsed_args)
 
         elif parsed_args.command == 'update-slot':
-            self._update_slot(parsed_args.server, remaining_args)
+            self._update_slot(parsed_args)
 
         elif parsed_args.command == 'remove-slot':
-            self._remove_slot(parsed_args.server, remaining_args)
+            self._remove_slot(parsed_args)
 
 
     def _deallocate_slot(self, args: list):
