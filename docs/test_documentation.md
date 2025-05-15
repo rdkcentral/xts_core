@@ -8,10 +8,6 @@ The test specification covers the following scenarios:
 
 - Operation without .xts files
 
-- Execution with YAML files. 
-  
-  _<small>(only .xts YAML files are supported; generic .yaml or .yml files are not supported)</small>_
-
 ### Handling of .xts Files ###
 
 #### Structured .xts File ####
@@ -60,32 +56,6 @@ Expected Behavior:
 
 - The user should be shown how to run each file individually using the appropriate command.
 
-### YAML File Execution in XTS ###
-
-#### Executing an .xts YAML File ####
-
-Preconditions: 
-
-- A valid .xts file (e.g., hello_world.xts) is present in the current directory or specified path.
-
-- The .xts file defines commands and test steps under keys such as run, list, or build.
-
-Expected Behavior:
-
-- XTS loads the .xts file and parses available sections (run, list, build, etc.).
-
-- Users can run commands defined in the YAML by specifying the appropriate subcommand.
-(e.g. ` xts run hello_world ` will execute: ` echo "hello world" `)
-
-#### Execution without YAML Runner ####
-
-Preconditions: YAML runner is not used.
-
-Expected Behavior:
-
-- XTS should operate without dependency on the YAML runner.
-
-- Other test execution methods should remain functional.
 
 ## XTS AllocatorClient Commands ##
 
