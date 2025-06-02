@@ -4,7 +4,50 @@
 
 **X** **T**est **S**uite
 
-XTS is a CLI tool designed to simplify the usage of management and exection of tests for developers.
+XTS is a flexible and declarative command orchestration system designed to simplify and unify how engineers run tests, build software, and automate routine tasks in embedded development environments. It replaces ad-hoc scripts with structured, reusable, and readable command definitions written in YAML.
+
+By enabling users to define command groups and actions in .xts files, xTS brings consistency and clarity to complex command workflows — making development and testing easier to manage and less error-prone.
+
+### What it does ###
+
+When executed, XTS automatically scans the current directory and all of its subdirectories for configuration files (.xts) and builds a complete set of available commands. These commands are logically grouped and can be executed from a single, intuitive command-line interface.
+
+Once discovered, XTS allows users to:
+
+- Run predefined test or utility commands.
+
+- Execute sequences of build or setup actions.
+
+- Pass in arguments to customize behavior.
+
+- View and explore all available actions defined in the project.
+
+### Why XTS ###
+
+- **Unified Command Interface**: One consistent way to run test, build, and utility commands.
+
+- **Human-Readable Configuration**: YAML format makes it easy to define, review, and update command logic.
+
+- **Structured and Discoverable**: No need to memorize scripts or command sequences — just run xts list to see what’s available.
+
+- **Easy to Extend**: Add new commands or workflows by simply editing or adding .xts files.
+
+- **Reduces Errors**: Encourages reuse of tested command patterns, reducing manual mistakes.
+
+### Key Features ###
+
+- **Automatic Directory Scanning**: Discovers all .xts files within the current and nested folders.
+
+- **Declarative YAML Configuration**: Define commands in a portable and version-controlled way.
+
+- **Grouped Commands**: Organize actions into logical sections like run, build, and setup.
+
+- **CLI Access**: Use xts <group> <command> to execute defined actions directly.
+
+- **Environment Resource Awareness**: Can work with external tools to allocate or prepare hardware for testing (optional).
+
+- **Developer-Focused**: Designed for local workflows — nothing extra required to get started.
+
 
 ## Installatation
 
@@ -21,7 +64,7 @@ The layout of the file dictates the commands that become available to use.
 **To check which commands are available run `xts --help`**
 
 
-## Documentation
+## Example Workflow
 
 Here is an example of an xts yaml config that will run with xts [hello_world.xts](examples/hello_world.xts). It has comments explaining how the sections are used.
 This config can be tested with the xts by running the following commands in the examples directory.
@@ -46,6 +89,16 @@ Goodbye
 me
 ```
 *As the command in the config is using `$@` for the parameters, anything entered after `xts run list_demo` will be printed in place of the word "me".*
+
+## Use Cases ##
+
+- **Embedded Testing**: Run hardware or software tests across devices or setups.
+
+- **Build Automation**: Standardize how code is compiled or packaged.
+
+- **System Utilities**: Automate setup tasks like logging, flashing, or cleanup routines.
+
+- **Developer Workflows**: Save time with shortcuts for repetitive development commands.
 
 ## Contributing
 
