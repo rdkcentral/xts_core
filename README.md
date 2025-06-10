@@ -6,21 +6,7 @@
 
 XTS is a flexible and declarative command orchestration system designed to simplify and unify how engineers run tests, build software, and automate routine tasks in embedded development environments. It replaces ad-hoc scripts with structured, reusable, and readable command definitions written in YAML.
 
-By enabling users to define command groups and actions in .xts files, xTS brings consistency and clarity to complex command workflows — making development and testing easier to manage and less error-prone.
-
-### What it does ###
-
-When executed, XTS automatically scans the current directory and all of its subdirectories for configuration files (.xts) and builds a complete set of available commands. These commands are logically grouped and can be executed from a single, intuitive command-line interface.
-
-Once discovered, XTS allows users to:
-
-- Run predefined test or utility commands.
-
-- Execute sequences of build or setup actions.
-
-- Pass in arguments to customize behavior.
-
-- View and explore all available actions defined in the project.
+By enabling users to define command groups and actions in .xts files, XTS brings consistency and clarity to complex command workflows — making development and testing easier to manage and less error-prone.
 
 ### Why XTS ###
 
@@ -28,7 +14,7 @@ Once discovered, XTS allows users to:
 
 - **Human-Readable Configuration**: YAML format makes it easy to define, review, and update command logic.
 
-- **Structured and Discoverable**: No need to memorize scripts or command sequences — just run xts list to see what’s available.
+- **Structured and Discoverable**: No need to memorize scripts or command sequences — just run `xts --help` to see what’s available.
 
 - **Easy to Extend**: Add new commands or workflows by simply editing or adding .xts files.
 
@@ -36,7 +22,7 @@ Once discovered, XTS allows users to:
 
 ### Key Features ###
 
-- **Automatic Directory Scanning**: Discovers all .xts files within the current and nested folders.
+- **Automatic Directory Scanning**: Discovers all .xts files within the current folder.
 
 - **Declarative YAML Configuration**: Define commands in a portable and version-controlled way.
 
