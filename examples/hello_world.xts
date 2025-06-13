@@ -19,22 +19,60 @@
 # * limitations under the License.
 # *
 #* ******************************************************************************
+
+# To run any of the commands under this the user will need to use run as
+# the first argument.
 run:
-  description: Run a test
+  description: "Run a command."
+  # To use this the user would need to run `xts run hello_world`
   hello_world:
     command: echo "hello world"
-    description: prints hello world into stdout
-  list_demo:
-    command:
-      - echo "Hello"
-      - echo "$@"
-      - echo "Goodbye"
-      - echo "$@"
-    description: Multiple prints taking extra args from the command line
-list:
-  description: list all tests
-  command: for i in $(seq 0 10); do echo "[$i]"; done
-build:
-  description: build some code
-  debug:
-    command:  sc docker run rdk-dunfell 'echo "Building debug"'
+    # This description is optional and will be displayed in the help message for hello_world by xts
+    description: print hello world in stdout
+  echo_passthrough:
+    description: Print all arguments passed after echo_passthrough.
+    command: echo $@
+    params:
+      # As the passthrough param has been set to true here
+      # the $@ in the command will substituted for all passed args after echo_passthrough
+      passthrough: true
+  example:
+    description: "Example of how nested commands work."
+    # Since this is nested under multiple keys,
+    # the user would need to give each key as an argument, in sequence.
+    # e.g. xts run example nested
+    nested:
+      description: "Run the nested command."
+      command: echo "This is the nested command"
+    # Even when nested, command lists and params can be used
+    list:
+      description: "Run a list of commands"
+      # As the command is a list, each command here will be run individually, in sequence.
+      command:
+        - echo "These"
+        - echo "are"
+        - echo "separate"
+        - echo "echoes"
+    list_passthrough:
+      description: Run each command listed, substituting the extra args in.
+      # As above, since passthrough is set to True all $@ will be replaced with all arguments
+      # following list_passthrough
+      command:
+        - echo "echo 1"
+        - echo "$@"
+        - echo "echo 2"
+        - echo "$@"
+      params:
+        passthrough: true
+
+# Since neither of the sections below contain special keys for xts
+# they will both be ignored.
+unrecognised:
+  - This
+  - Should
+  - Always
+  - Be
+  - ignored
+unrecognised_nested:
+  nest:
+    - example
