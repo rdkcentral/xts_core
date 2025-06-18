@@ -40,18 +40,7 @@ XTS provides a powerful and flexible way to discover and manage your command def
 
 - **Current Behaviour**: XTS currently discovers commands from .xts files located in your **current working directory**.
 
-- **Planned Command Registry**: In upcoming versions, XTS will introduce a central **Command Registry**. This registry will store references to .xts files from various sources, including local file paths and remote URLs. It will serve as a primary source for frequently used or global commands, with its contents controlled via dedicated XTS registry commands.
-
-- **Planned Local Augmentation**: When the Command Registry is introduced, XTS will automatically merge command definitions from the registry with those found in your **current working directory**. This will allow you to easily add project-specific commands or override global ones without modifying the central registry.
-
-**Registry Management Commands (Planned)**
-Once implemented, the Command Registry's contents will be managed using dedicated XTS registry commands:
-
-- `xts registry add <path_or_url>`: Adds a new `.xts` file (from a local path or URL) to the registry.
-- `xts registry remove <path_or_url>`: Removes an `.xts` file reference from the registry.
-- `xts registry list`: Displays all `.xts` files currently registered.
-
-Future updates will also introduce features like `xts list -R` for recursive scanning of commands on demand.
+- **Planned Remote Config Support**: In upcoming versions, XTS will introduce the ability to use XTS config files hosted in remote locations.
 
 ## Installatation
 
