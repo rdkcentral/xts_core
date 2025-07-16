@@ -33,32 +33,36 @@ defined within an XTS configuration file (`.xts` extension). It allows for:
 The script utilizes the `yaml_runner` module to handle configuration
 parsing and command execution.
 """
-
+import argparse
 import os
 import re
 import sys
 
-import rich
 import yaml
 try:
     from yaml import CSafeLoader as SafeLoader
 except ImportError:
     from yaml import SafeLoader
 
-from yaml_runner import YamlRunner, add_choices_to_help
+import yaml.scanner
+from yaml_runner import YamlRunner
+try:
+    from .plugins import XTSAllocatorClient
+except ImportError:
+    from xts_core.plugins import XTSAllocatorClient
+try:
+    from .utils import info, error, warning
+except:
+    from xts_core.utils import info, error, warning
 
-from plugins import XTSAllocatorClient
-
-class XTS(YamlRunner):
+class XTS():
     """
     XTS class for managing XTS configuration and running commands.
 
-    Inherits from the `YamlRunner` class to provide a framework for
-    parsing arguments, processing configuration, and executing commands.
-
     Attributes:
         _xts_config (dict, optional): The internal dictionary containing the
-            parsed XTS configuration data. Defaults to None.
+                                      parsed XTS configuration data. Defaults to None.
+        _plugins (list): Plugin classes from imported plugins.
     """
 
 
@@ -66,14 +70,17 @@ class XTS(YamlRunner):
         """
         Initializes an XTS object.
         """
-        super().__init__(program='xts')
         self._xts_config = None
+        self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
 
     @property
     def xts_config(self):
         """Returns a copy of the currently loaded XTS configuration."""
-        return self._xts_config
+        if isinstance(self._xts_config,dict):
+            return self._xts_config.copy()
+        else:
+            return self._xts_config
 
     @xts_config.setter
     def xts_config(self, config:str):
@@ -91,8 +98,11 @@ class XTS(YamlRunner):
             try:
                 with open(config, 'r', encoding='utf-8') as config_stream:
                     self._xts_config = yaml.load(config_stream,SafeLoader)
+                    self._command_sections = self._get_command_sections()
             except PermissionError:
-                error(f'Could not read xts config: [{config}]')
+                error(f'Could not read xts config: {config}')
+            except yaml.scanner.ScannerError as e:
+                error(f'The xts file is incorrectly formatted: {config}')
         else:
             error('xts config specified does not exist')
 
@@ -111,38 +121,21 @@ class XTS(YamlRunner):
         if len(sys.argv) > 1:
             if re.search(r'.xts$',sys.argv[1]):
                 self.xts_config = sys.argv[1]
-                self._used_args.append(sys.argv[1])
                 sys.argv.pop(1)
-        if self.xts_config is None:
+        if self._xts_config is None:
             self._find_xts_config()
-        parser = self.new_subparser(name='_parse_first_arg')
-        choices = self._get_command_choices()[1]
-        parser.add_argument('--help','-h',
-                            action='store_true',
-                            help='Show the help information',
-                            default=False)
-        parser.add_argument('command',
-                            action='store',
-                            help='The command to run',
-                            choices=choices,
-                            default=None,
-                            metavar='COMMAND')
-        help_msg = parser.format_help()
-        help_msg = add_choices_to_help(help_msg, 'COMMAND', self._get_command_choices()[0])
-        parser.usage = help_msg.replace('usage: ','')
-        parsed_args, remaining = parser.parse_known_args()
-        # Now the command is known we can run a plugin an interrupt the run sequence
-        self._run_plugins(parsed_args.command, remaining)
-        # If a plugin run the script should exit before reaching this.
-        self.config = {parsed_args.command : self._xts_config.get(parsed_args.command)}
-        self._used_args.append(parsed_args.command)
-        if parsed_args.help:
-            remaining.append('--help')
-        # If first argument isn't a whole section but just a command
-        # add the argument back into the argument list
-        if self.config[parsed_args.command].get('command'):
-            remaining.append(parsed_args.command)
-        return remaining
+        parser = argparse.ArgumentParser(prog='xts')
+        subparsers = parser.add_subparsers(dest='command',required=True)
+        for command, description in self._get_command_choices():
+            subparsers.add_parser(command,
+                                  help=description,
+                                  add_help=False)
+        # Parsing here will raise SystemExit() early if an invalid command is used or
+        # if --help is called with no other arguments.
+        parsed_args, remaining =  parser.parse_known_args()
+        command_args = [parsed_args.command] + remaining
+        return command_args
+        
 
     def _find_xts_config(self):
         """
@@ -184,7 +177,7 @@ class XTS(YamlRunner):
             print(f'\txts {filename} ...')
         raise SystemExit(2)
 
-    def _get_command_choices(self):
+    def _get_command_choices(self) -> list[tuple]:
         """
         Retrieves available command choices from the XTS configuration and plugins.
         It extracts command names from the loaded XTS configuration file.
@@ -192,89 +185,77 @@ class XTS(YamlRunner):
         Additionally, it collects commands provided by loaded plugins.
 
         Returns:
-            tuple:
-                - choices_with_desc (list): A list of available commands, with descriptions as tuples (command, description) where applicable.
-                - choices_without_desc (list): A flat list containing only the command names.
+            list[tuple]: A list of available commands, with descriptions as tuples (command, description) where applicable.
         """
         choices_with_desc = []
 
         if self._xts_config:
-            for command, details in self.xts_config.items():
-                description = details.get('description')
-                if description:
-                    choices_with_desc.append((command, description))  #store as tuple (command, description)
-                else:
-                    choices_with_desc.append(command)  #store as a plain string
-
+            for command, details in self._command_sections.items():
+                description = details.get('description', '')
+                choices_with_desc.append((command, description))  #store as tuple (command, description)
         #additional commands provided by plugins
         for plugin in self._plugins:
             choices_with_desc.extend(plugin().provided_args)
+        return choices_with_desc
 
-        # Extract command names without descriptions for easier reference
-        choices_without_desc = [
-            command if isinstance(command, str) else command[0]
-            for command in choices_with_desc
-        ]
-
-        return choices_with_desc, choices_without_desc
-
-    def _run_plugins(self, command:str, remaining_args: list):
+    def _get_command_sections(self) -> dict:
         """
-        Placeholder for future plugin support.
-
-        This method is currently empty (`pass`) but serves as a placeholder for
-        future implementation of plugin functionality to extend the XTS tool.
-
-        Args:
-            command (str): The name of the command being executed.
-        """
-        for plugin in self._plugins:
-            if command in plugin().provided_positionals:
-                plugin().run([command].append(remaining_args))
-
-    def run(self):
-        """
-        Runs the XTS script with the parsed configuration and arguments.
+        Gets the sections with commands in them from the config.
 
         Returns:
-            Returns a tuple containing three lists: `stdout_list`, `stderr_list`, and `exit_code_list`.
-                Each list contains the respective outputs (stdout, stderr,
-                and exit code) of running the command(s) specified in the `self.commands` attribute..
+            dict: Dictionary containing only keys that have commands in them.
+                    The commands could be nested in further dictionaries.
         """
-        unparsed_args = self._parse_first_arg()
-        return super().run(config=self.config, args=unparsed_args)
+        command_sections = {}
+        def _is_command_section(subdict: dict) -> bool:
+            """Check dictionary and nested dictionarys for "command" key.
 
+            Args:
+                subdict (dict): Nested dictionary to check.
 
-def info(info_message):
-    """
-    Prints a Yellow informational message.
+            Returns:
+                bool: True if command key found. False otherwise.
+            """
+            result = False
+            for key, value in subdict.items():
+                if key == 'command':
+                    result = True
+                    break
+                elif isinstance(value, dict):
+                    result = _is_command_section(value)
+            return result
+        for key, value in self._xts_config.items():
+            if isinstance(value,dict):
+                if _is_command_section(value):
+                    command_sections.update({key:self._xts_config.get(key)})
+        return command_sections
 
-    Args:
-        info_message (str): The informational message to be printed.
-    """
-    rich.print(f'[yellow]{info_message}[/yellow]')
+    def run(self):
+        """Run the XTS app.
 
-def error(error_message):
-    """
-    Prints a Red error message and exits with exit code 1.
+        Raises:
+            SystemExit: Raised when unrecogised arguments are given.
+        """
+        args = self._parse_first_arg()
+        if plugins := list(filter(lambda x: args[0] in x().provided_positionals,self._plugins)):
+            for plugin in plugins:
+                plugin().run(args)
+        else:
+            try:
+                yaml_runner = YamlRunner(self._command_sections,
+                        program='xts',
+                        hierarchical=True,
+                        fail_fast=True)
+                _,_,exit_code = yaml_runner.run(args)
+                sys.exit(sorted(exit_code)[-1])
+            except Exception as e:
+                # This code should be unreachable, but is handled just in case.
+                error('An unrecognised command has caused and error\n\n'+
+                      f'Command Args: [{" ".join(args)}]\n\n'+
+                      e)
 
-    Args:
-        error_message (str): The error message to be printed.
-
-    Raises:
-        SystemExit: Exits the program due to the error
-    """
-    rich.print(f'[red][bold]ERROR:[/bold] {error_message}[/red]')
-    raise SystemExit(1)
-
-def warning(warning_message):
-    """
-    Print an orange warning message.
-
-    Args:
-        warning_message (_type_): _description_
-    """
-    rich.print(f'[dark_orange][bold]{warning_message}[/bold][/dark_orange]')
+def main():
+    XTS().run()
 
 if __name__ == "__main__":
-    XTS().run()
+    main()
