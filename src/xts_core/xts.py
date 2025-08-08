@@ -55,6 +55,9 @@ try:
 except:
     from xts_core.utils import info, error, warning
 
+from plugins import XTSAllocatorClient
+import xts_loader
+
 class XTS():
     """
     XTS class for managing XTS configuration and running commands.
@@ -118,11 +121,29 @@ class XTS():
         Returns:
          list : remaining arguments after parsing the first argument.
         """
+        # if len(sys.argv) > 1:
+        #     if re.search(r'.xts$',sys.argv[1]):
+        #         self.xts_config = sys.argv[1]
+        #         self._used_args.append(sys.argv[1])
+        #         sys.argv.pop(1)
+        
         if len(sys.argv) > 1:
-            if re.search(r'.xts$',sys.argv[1]):
-                self.xts_config = sys.argv[1]
+            arg = sys.argv[1]
+            if arg in ["alias", "list-alias", "remove-alias"]:
+                self._handle_alias_commands()
+                sys.exit(0)
+
+            # Accept alias, URL, or local .xts
+            try:
+                resolved_path = xts_loader.resolve_alias_or_url(arg)
+                # self._xts_config
+                self.xts_config = resolved_path
+                self._used_args.append(arg)
                 sys.argv.pop(1)
-        if self._xts_config is None:
+            except Exception as e:
+                error(f"Could not resolve XTS config from '{arg}': {e}")
+
+        if self.xts_config is None:
             self._find_xts_config()
         parser = argparse.ArgumentParser(prog='xts')
         subparsers = parser.add_subparsers(dest='command',required=True)
@@ -137,6 +158,24 @@ class XTS():
         return command_args
         
 
+    def _handle_alias_commands(self):
+        args = sys.argv[1:]
+        if args[0] == "alias" and len(args) == 3:
+            xts_loader.add_alias(args[1], args[2])
+            print(f"Alias '{args[1]}' -> '{args[2]}' added.")
+        elif args[0] == "list-alias":
+            aliases = xts_loader.list_aliases()
+            for k, v in aliases.items():
+                print(f"{k} -> {v}")
+        elif args[0] == "remove-alias" and len(args) == 2:
+            xts_loader.remove_alias(args[1])
+            print(f"Alias '{args[1]}' removed.")
+        else:
+            print("Usage:")
+            print("  xts alias <name> <path_or_url>")
+            print("  xts list-alias")
+            print("  xts remove-alias <name>")
+    
     def _find_xts_config(self):
         """
         Searches for an XTS configuration file in the current directory.
