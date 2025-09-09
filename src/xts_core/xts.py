@@ -55,7 +55,7 @@ try:
 except:
     from xts_core.utils import info, error, warning
 
-from plugins import XTSAllocatorClient
+from .plugins import XTSAllocatorClient
 import xts_loader
 
 class XTS():
@@ -76,6 +76,8 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
+        self._used_args = []
+
 
     @property
     def xts_config(self):
@@ -107,7 +109,7 @@ class XTS():
             except yaml.scanner.ScannerError as e:
                 error(f'The xts file is incorrectly formatted: {config}')
         else:
-            error('xts config specified does not exist')
+            error('The xts config is not specified')
 
     def _parse_first_arg(self):
         """
@@ -121,60 +123,89 @@ class XTS():
         Returns:
          list : remaining arguments after parsing the first argument.
         """
-        # if len(sys.argv) > 1:
-        #     if re.search(r'.xts$',sys.argv[1]):
-        #         self.xts_config = sys.argv[1]
-        #         self._used_args.append(sys.argv[1])
-        #         sys.argv.pop(1)
         
-        if len(sys.argv) > 1:
-            arg = sys.argv[1]
-            if arg in ["alias", "list-alias", "remove-alias"]:
-                self._handle_alias_commands()
-                sys.exit(0)
+        if len(sys.argv) < 2:
+            error("No command specified")
 
-            # Accept alias, URL, or local .xts
-            try:
-                resolved_path = xts_loader.resolve_alias_or_url(arg)
-                # self._xts_config
-                self.xts_config = resolved_path
-                self._used_args.append(arg)
-                sys.argv.pop(1)
-            except Exception as e:
-                error(f"Could not resolve XTS config from '{arg}': {e}")
+        first_arg = sys.argv[1]
 
+        # if command is 'alias' then skip resolving config
+        if first_arg == "alias":
+            parser = argparse.ArgumentParser(prog='xts')
+            subparsers = parser.add_subparsers(dest='command', required=True)
+
+            # Alias subcommand group
+            alias_parser = subparsers.add_parser('alias', help='Manage XTS config aliases')
+            alias_subparsers = alias_parser.add_subparsers(dest='alias_cmd', required=True)
+
+            # alias add <name> <path_or_url>
+            add_parser = alias_subparsers.add_parser('add', help='Add a new alias')
+            add_parser.add_argument('name')
+            add_parser.add_argument('path')
+
+            # alias list
+            list_parser = alias_subparsers.add_parser('list', help='List all aliases')
+
+            # alias remove <name>
+            remove_parser = alias_subparsers.add_parser('remove', help='Remove an alias')
+            remove_parser.add_argument('name')
+
+            parsed_args = parser.parse_args()
+
+            # Handle alias commands
+            if parsed_args.alias_cmd == "add":
+                xts_loader.add_alias(parsed_args.name, parsed_args.path)
+                print(f"Alias '{parsed_args.name}' -> '{parsed_args.path}' added.")
+            elif parsed_args.alias_cmd == "list":
+                aliases = xts_loader.list_aliases()
+                for k, v in aliases.items():
+                    print(f"{k} -> {v}")
+            elif parsed_args.alias_cmd == "remove":
+                xts_loader.remove_alias(parsed_args.name)
+                print(f"Alias '{parsed_args.name}' removed.")
+            sys.exit(0)
+
+        # if not alias, try resolving xts config or alias
+        try:
+            resolved_path = xts_loader.resolve_alias_or_url(first_arg)
+            self.xts_config = resolved_path
+            self._used_args.append(first_arg)
+            sys.argv.pop(1)
+        except Exception as e:
+            error(f"Could not resolve XTS config from '{first_arg}': {e}")
+
+        # find config in current dir if still none
         if self.xts_config is None:
             self._find_xts_config()
+
+        # set up parser for YAML commands + plugins
         parser = argparse.ArgumentParser(prog='xts')
-        subparsers = parser.add_subparsers(dest='command',required=True)
+        subparsers = parser.add_subparsers(dest='command', required=True)
+
         for command, description in self._get_command_choices():
-            subparsers.add_parser(command,
-                                  help=description,
-                                  add_help=False)
-        # Parsing here will raise SystemExit() early if an invalid command is used or
-        # if --help is called with no other arguments.
-        parsed_args, remaining =  parser.parse_known_args()
+            subparsers.add_parser(command, help=description, add_help=False)
+
+        parsed_args, remaining = parser.parse_known_args()
         command_args = [parsed_args.command] + remaining
         return command_args
-        
 
     def _handle_alias_commands(self):
         args = sys.argv[1:]
         if args[0] == "alias" and len(args) == 3:
             xts_loader.add_alias(args[1], args[2])
             print(f"Alias '{args[1]}' -> '{args[2]}' added.")
-        elif args[0] == "list-alias":
+        elif args[0] == "--list-alias":
             aliases = xts_loader.list_aliases()
             for k, v in aliases.items():
                 print(f"{k} -> {v}")
-        elif args[0] == "remove-alias" and len(args) == 2:
+        elif args[0] == "alias-remove" and len(args) == 2:
             xts_loader.remove_alias(args[1])
             print(f"Alias '{args[1]}' removed.")
         else:
             print("Usage:")
             print("  xts alias <name> <path_or_url>")
-            print("  xts list-alias")
-            print("  xts remove-alias <name>")
+            print("  xts --list-alias")
+            print("  xts alias-remove <name>")
     
     def _find_xts_config(self):
         """
