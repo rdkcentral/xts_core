@@ -201,9 +201,10 @@ class XTS():
                 if os.path.exists(candidate):
                     path = candidate
 
-            absolute_path = os.path.abspath(path)
-            xts_loader.add_alias(parsed_args.name, absolute_path)
-            print(f"Alias '{parsed_args.name}' -> '{absolute_path}' added.")
+            if not path.startswith("http://") and not path.startswith("https://"):
+                path = os.path.abspath(path)
+            xts_loader.add_alias(parsed_args.name, path)
+            print(f"Alias '{parsed_args.name}' -> '{path}' added.")
 
         elif parsed_args.alias_cmd == "list":
             aliases = xts_loader.list_aliases()
