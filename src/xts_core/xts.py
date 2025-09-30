@@ -57,7 +57,11 @@ try:
 except:
     from xts_core.utils import info, error, warning
 
-import xts_loader
+try:
+    from . import xts_loader
+except:
+    from xts_core import xts_loader
+
 
 class XTS():
     """
@@ -151,8 +155,11 @@ class XTS():
         self._add_alias_subcommands(subparsers)
 
         for command, description in self._get_command_choices():
-            subparsers.add_parser(command, help=description, add_help=False)
-
+            subparsers.add_parser(command, 
+                                  help=description, 
+                                  add_help=False)
+        # Parsing here will raise SystemExit() early if an invalid command is used or
+        # if --help is called with no other arguments.
         parsed_args, remaining = parser.parse_known_args()
         return [parsed_args.command] + remaining
 
