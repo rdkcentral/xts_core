@@ -46,33 +46,6 @@ def fetch_url_to_cache(url):
 
     return path
 
-def resolve_alias_or_url(arg):
-    """Resolve an alias or URL to a filesystem path.
-
-    - If the argument matches an alias, resolve it to its target.
-    - If the argument is a URL, fetch and cache it.
-    - Otherwise, return the argument unchanged.
-
-    Args:
-        arg: Alias name, URL, or local path.
-
-    Returns:
-        The resolved filesystem path (or unchanged argument if not resolvable).
-    """
-    ensure_dirs()
-    aliases = {}
-    if os.path.exists(ALIAS_FILE):
-        with open(ALIAS_FILE) as f:
-            aliases = json.load(f)
-
-    if arg in aliases:
-        arg = aliases[arg]
-
-    if utils.is_url(arg):
-        return fetch_url_to_cache(arg)
-
-    return arg
-
 def add_alias(name, value):
     """Add or update an alias.
 

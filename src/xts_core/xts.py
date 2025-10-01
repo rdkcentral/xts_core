@@ -37,6 +37,7 @@ import argparse
 import os
 import re
 import sys
+import json
 
 import yaml
 try:
@@ -53,14 +54,14 @@ except ImportError:
     from xts_core.plugins import XTSAllocatorClient
 
 try:
-    from .utils import info, error, warning
+    from .utils import info, error, warning, is_url
 except:
-    from xts_core.utils import info, error, warning
+    from xts_core.utils import info, error, warning, is_url
 
 try:
-    from . import xts_loader
+    from . import xts_alias
 except:
-    from xts_core import xts_loader
+    from xts_core import xts_alias
 
 
 class XTS():
@@ -147,7 +148,11 @@ class XTS():
         # resolve first arg as config/alias
         if len(sys.argv) > 1:
             first_arg = sys.argv[1]
-            self._resolve_first_arg(first_arg)
+            resolved = self._resolve_first_arg(first_arg)
+            if not resolved:
+                self._find_xts_config()
+        else:
+            self._find_xts_config() 
 
         # full parser with YAML/plugin commands
         parser = argparse.ArgumentParser(prog="xts")
@@ -155,8 +160,8 @@ class XTS():
         self._add_alias_subcommands(subparsers)
 
         for command, description in self._get_command_choices():
-            subparsers.add_parser(command, 
-                                  help=description, 
+            subparsers.add_parser(command,
+                                  help=description,
                                   add_help=False)
         # Parsing here will raise SystemExit() early if an invalid command is used or
         # if --help is called with no other arguments.
@@ -165,31 +170,56 @@ class XTS():
 
     def _resolve_first_arg(self, arg: str) -> str | None:
         """
-        Resolve the first CLI argument as:
-        - 'alias' subcommand
-        - an .xts config file
-        - an alias pointing to a .xts file
-        Returns the resolved path or 'alias' string.
+        Resolve the first CLI argument into a usable .xts config path or alias.
+
+        If:
+        - "alias" → return the literal string "alias".
+        - Local file ending with ".xts" → set self.xts_config to this path.
+        - Named alias from ~/.xts/aliases.json → resolve to its target.
+        - Remote URL (http/https) → fetch and cache the file locally, 
+            then set self.xts_config to the cached path.
+
+        Args:
+            arg (str): The first CLI argument passed to the xts command.
+
+        Returns:
+            str (None): 
+                - "alias" if the subcommand is 'alias'.
+                - The resolved .xts file path (local or cached).
+                - None if no resolution could be performed.
         """
         if arg == "alias":
             return "alias"
 
-        elif os.path.exists(arg) and arg.endswith(".xts"):
+        if os.path.exists(arg) and arg.endswith(".xts"):
             self.xts_config = arg
             self._used_args.append(arg)
             sys.argv.pop(1)
             return arg
 
-        else:
-            try:
-                resolved = xts_loader.resolve_alias_or_url(arg)
-                if resolved and resolved.endswith(".xts"):
-                    self.xts_config = resolved
-                    self._used_args.append(arg)  # keep original alias
-                    sys.argv.pop(1)
-                    return resolved
-            except Exception:
-                pass
+        try:
+            if os.path.exists(xts_alias.ALIAS_FILE):
+                with open(xts_alias.ALIAS_FILE) as f:
+                    aliases = json.load(f)
+            else:
+                aliases = {}
+
+            if arg in aliases:
+                arg = aliases[arg]
+
+            if is_url(arg):
+                resolved = xts_alias.fetch_url_to_cache(arg)
+            else:
+                resolved = arg
+
+            if resolved and resolved.endswith(".xts"):
+                self.xts_config = resolved
+                self._used_args.append(arg)
+                sys.argv.pop(1)
+                return resolved
+
+        except Exception:
+            pass
 
         return None
     
@@ -210,16 +240,16 @@ class XTS():
 
             if not path.startswith("http://") and not path.startswith("https://"):
                 path = os.path.abspath(path)
-            xts_loader.add_alias(parsed_args.name, path)
+            xts_alias.add_alias(parsed_args.name, path)
             print(f"Alias '{parsed_args.name}' -> '{path}' added.")
 
         elif parsed_args.alias_cmd == "list":
-            aliases = xts_loader.list_aliases()
+            aliases = xts_alias.list_aliases()
             for k, v in aliases.items():
                 print(f"{k} -> {v}")
 
         elif parsed_args.alias_cmd == "remove":
-            xts_loader.remove_alias(parsed_args.name)
+            xts_alias.remove_alias(parsed_args.name)
             print(f"Alias '{parsed_args.name}' removed.")
 
     def _add_alias_subcommands(self, subparsers):
