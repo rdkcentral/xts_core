@@ -123,7 +123,7 @@ class XTS():
             except yaml.scanner.ScannerError as e:
                 error(f'The xts file is incorrectly formatted: {config}')
         else:
-            error(f'The xts config is not specified (path tried: {config})')    
+            error('xts config specified does not exist')    
 
     def _parse_first_arg(self):
         """
@@ -226,19 +226,14 @@ class XTS():
     def _handle_alias(self, parsed_args):
         """
         Execute alias subcommands (add, list, remove).
+        - If the user provides an absolute path, use it as-is.
+        - If the user provides a relative path, resolve it against the
+            current working directory.
         """
         if parsed_args.alias_cmd == "add":
             path = parsed_args.path
 
-            # if path doesn’t exist, also try relative to project root
-            if not os.path.exists(path):
-                src_dir = os.path.dirname(os.path.abspath(__file__))   # .../src/xts_core
-                project_root = os.path.abspath(os.path.join(src_dir, "..", ".."))
-                candidate = os.path.join(project_root, path)
-                if os.path.exists(candidate):
-                    path = candidate
-
-            if not path.startswith("http://") and not path.startswith("https://"):
+            if not is_url(path):
                 path = os.path.abspath(path)
             xts_alias.add_alias(parsed_args.name, path)
             print(f"Alias '{parsed_args.name}' -> '{path}' added.")
