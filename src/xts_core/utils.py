@@ -55,3 +55,14 @@ def warning(warning_message:str):
         warning_message (str): Message to be printed as a warning.
     """
     rich.print(f'[dark_orange][bold]{warning_message}[/bold][/dark_orange]')
+
+def is_url(s):
+    """Check if a string is a URL.
+
+    Args:
+        s: The string to check.
+
+    Returns:
+        True if `s` starts with http:// or https://, otherwise False.
+    """
+    return s.startswith("http://") or s.startswith("https://")

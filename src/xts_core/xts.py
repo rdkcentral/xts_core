@@ -37,6 +37,7 @@ import argparse
 import os
 import re
 import sys
+import json
 
 import yaml
 try:
@@ -46,25 +47,33 @@ except ImportError:
 
 import yaml.scanner
 from yaml_runner import YamlRunner
+
 try:
     from .plugins import XTSAllocatorClient
 except ImportError:
     from xts_core.plugins import XTSAllocatorClient
+
 try:
-    from .utils import info, error, warning
+    from .utils import info, error, warning, is_url
 except:
-    from xts_core.utils import info, error, warning
+    from xts_core.utils import info, error, warning, is_url
+
+try:
+    from . import xts_alias
+except:
+    from xts_core import xts_alias
+
 
 class XTS():
     """
     XTS class for managing XTS configuration and running commands.
 
     Attributes:
-        _xts_config (dict, optional): The internal dictionary containing the
-                                      parsed XTS configuration data. Defaults to None.
-        _plugins (list): Plugin classes from imported plugins.
+        _xts_config (dict, optional): Parsed XTS configuration data. Defaults to None.
+        _command_sections (dict): Dictionary of command sections extracted from configuration.
+        _plugins (list): List of plugin classes providing additional commands.
+        _used_args (list): List of command-line arguments used.
     """
-
 
     def __init__(self):
         """
@@ -73,10 +82,17 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
+        self._used_args = []
+
 
     @property
     def xts_config(self):
-        """Returns a copy of the currently loaded XTS configuration."""
+        """
+        Returns a copy of the currently loaded XTS configuration.
+
+        Returns:
+            dict or None: Copy of the XTS configuration dictionary if loaded, else None.
+        """
         if isinstance(self._xts_config,dict):
             return self._xts_config.copy()
         else:
@@ -90,9 +106,12 @@ class XTS():
         Validates the existence and extension of the provided configuration
         file. If valid, attempts to load the YAML data using the `yaml.load`
         function with `SafeLoader` for security. 
-        
+
+        Args:
+            config (str): Path to the XTS configuration file.
+
         Raises:
-            SystemExit: if the file cannot be read or other errors during loading.
+            SystemExit: If file does not exist, cannot be read, or YAML parsing fails.
         """
         if os.path.exists(config) and re.search(r'.xts$',config):
             try:
@@ -104,42 +123,157 @@ class XTS():
             except yaml.scanner.ScannerError as e:
                 error(f'The xts file is incorrectly formatted: {config}')
         else:
-            error('xts config specified does not exist')
+            error('xts config specified does not exist')    
 
     def _parse_first_arg(self):
         """
-        Parses the first argument provided to xts.
-
-        Checks if an argument is provided. If it is a valid XTS configuration
-        file path, sets the `xts_config` attribute. Otherwise, attempts to
-        find a configuration file in the current directory.
-        With the config in place, updates internal arguments and program name.
-
+        Parse CLI arguments and set up argparse for all commands.
+        - Handles 'alias' subcommands immediately.
+        - Resolves first argument as an .xts config file or alias.
+        - Loads YAML/plugin commands after config is loaded.
+        
         Returns:
-         list : remaining arguments after parsing the first argument.
+            list: Remaining arguments after parsing, including the command name.
         """
+        # quick parser for alias commands
+        pre_parser = argparse.ArgumentParser(prog="xts", add_help=True)
+        pre_subparsers = pre_parser.add_subparsers(dest="command", required=True)
+        self._add_alias_subcommands(pre_subparsers)
+
+        if len(sys.argv) > 1 and sys.argv[1] == "alias":
+            parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
+            self._handle_alias(parsed_args)
+            sys.exit(0)
+
+        # resolve first arg as config/alias
         if len(sys.argv) > 1:
-            if re.search(r'.xts$',sys.argv[1]):
-                self.xts_config = sys.argv[1]
-                sys.argv.pop(1)
-        if self._xts_config is None:
-            self._find_xts_config()
-        parser = argparse.ArgumentParser(prog='xts')
-        subparsers = parser.add_subparsers(dest='command',required=True)
+            first_arg = sys.argv[1]
+            resolved = self._resolve_first_arg(first_arg)
+            if not resolved:
+                self._find_xts_config()
+        else:
+            self._find_xts_config() 
+
+        # full parser with YAML/plugin commands
+        parser = argparse.ArgumentParser(prog="xts")
+        subparsers = parser.add_subparsers(dest="command", required=True)
+        self._add_alias_subcommands(subparsers)
+
         for command, description in self._get_command_choices():
             subparsers.add_parser(command,
                                   help=description,
                                   add_help=False)
         # Parsing here will raise SystemExit() early if an invalid command is used or
         # if --help is called with no other arguments.
-        parsed_args, remaining =  parser.parse_known_args()
-        command_args = [parsed_args.command] + remaining
-        return command_args
-        
+        parsed_args, remaining = parser.parse_known_args()
+        return [parsed_args.command] + remaining
 
+    def _resolve_first_arg(self, arg: str) -> str | None:
+        """
+        Resolve the first CLI argument into a usable .xts config path or alias.
+
+        If:
+        - "alias" → return the literal string "alias".
+        - Local file ending with ".xts" → set self.xts_config to this path.
+        - Named alias from ~/.xts/aliases.json → resolve to its target.
+        - Remote URL (http/https) → fetch and cache the file locally, 
+            then set self.xts_config to the cached path.
+
+        Args:
+            arg (str): The first CLI argument passed to the xts command.
+
+        Returns:
+            str (None): 
+                - "alias" if the subcommand is 'alias'.
+                - The resolved .xts file path (local or cached).
+                - None if no resolution could be performed.
+        """
+        if arg == "alias":
+            return "alias"
+
+        if os.path.exists(arg) and arg.endswith(".xts"):
+            self.xts_config = arg
+            self._used_args.append(arg)
+            sys.argv.pop(1)
+            return arg
+
+        try:
+            if os.path.exists(xts_alias.ALIAS_FILE):
+                with open(xts_alias.ALIAS_FILE) as f:
+                    aliases = json.load(f)
+            else:
+                aliases = {}
+
+            if arg in aliases:
+                arg = aliases[arg]
+
+            if is_url(arg):
+                resolved = xts_alias.fetch_url_to_cache(arg)
+            else:
+                resolved = arg
+
+            if resolved and resolved.endswith(".xts"):
+                self.xts_config = resolved
+                self._used_args.append(arg)
+                sys.argv.pop(1)
+                return resolved
+
+        except Exception:
+            pass
+
+        return None
+    
+    def _handle_alias(self, parsed_args):
+        """
+        Execute alias subcommands (add, list, remove).
+        - If the user provides an absolute path, use it as-is.
+        - If the user provides a relative path, resolve it against the
+            current working directory.
+        """
+        if parsed_args.alias_cmd == "add":
+            path = parsed_args.path
+
+            if not is_url(path):
+                path = os.path.abspath(path)
+            xts_alias.add_alias(parsed_args.name, path)
+            print(f"Alias '{parsed_args.name}' -> '{path}' added.")
+
+        elif parsed_args.alias_cmd == "list":
+            aliases = xts_alias.list_aliases()
+            for k, v in aliases.items():
+                print(f"{k} -> {v}")
+
+        elif parsed_args.alias_cmd == "remove":
+            xts_alias.remove_alias(parsed_args.name)
+            print(f"Alias '{parsed_args.name}' removed.")
+
+    def _add_alias_subcommands(self, subparsers):
+        """
+        Adds the 'alias' subcommand and its subcommands (add, list, remove)
+        to the provided subparsers object.
+
+        Args:
+            subparsers (argparse._SubParsersAction): The subparsers object to attach alias commands to.
+        """
+        alias_parser = subparsers.add_parser('alias', help='Manage XTS aliases')
+        alias_subparsers = alias_parser.add_subparsers(dest='alias_cmd', required=True)
+
+        # alias add <name> <path>
+        add_parser = alias_subparsers.add_parser('add', help='Add a new alias')
+        add_parser.add_argument('name')
+        add_parser.add_argument('path')
+
+        # alias list
+        list_parser = alias_subparsers.add_parser('list', help='List all aliases')
+
+        # alias remove <name>
+        remove_parser = alias_subparsers.add_parser('remove', help='Remove an alias')
+        remove_parser.add_argument('name', help='Name of the alias to remove')
+    
     def _find_xts_config(self):
         """
         Searches for an XTS configuration file in the current directory.
+        If multiple files are found, calls _user_select_config to prompt the user.
 
         Raises:
             SystemExit: If no XTS configuration file is found.
@@ -162,7 +296,7 @@ class XTS():
 
     def _user_select_config(self, choices):
         """
-        Print out list commands with found xts configs to run xts with each.
+        Prompts the user to select one of multiple XTS configuration files.
         Exits after running to allow user to do so.
 
         Args:
@@ -185,7 +319,7 @@ class XTS():
         Additionally, it collects commands provided by loaded plugins.
 
         Returns:
-            list[tuple]: A list of available commands, with descriptions as tuples (command, description) where applicable.
+            list[tuple]: List of tuples (command, description) for available commands.
         """
         choices_with_desc = []
 
@@ -200,10 +334,10 @@ class XTS():
 
     def _get_command_sections(self) -> dict:
         """
-        Gets the sections with commands in them from the config.
+        Extracts command sections from the loaded XTS configuration.
 
         Returns:
-            dict: Dictionary containing only keys that have commands in them.
+            dict: Dictionary containing only keys that represent command sections.
                     The commands could be nested in further dictionaries.
         """
         command_sections = {}
