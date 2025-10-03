@@ -20,5 +20,4 @@
 # * limitations under the License.
 # *
 #* ******************************************************************************
-
-from .yaml_runner import YamlRunner, add_choices_to_help
+from .xts_allocator_client import XTSAllocatorClient

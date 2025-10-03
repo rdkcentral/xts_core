@@ -7,12 +7,10 @@ import yaml
 import argparse
 import rich
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path+"/../../")
+from .base_plugin import BaseXTSPlugin
 
-from yaml_runner import add_choices_to_help
 
-class XTSAllocatorClient():
+class XTSAllocatorClient(BaseXTSPlugin):
     """
     Command-line interface client for interacting with an allocator server that manages test slots.
 
