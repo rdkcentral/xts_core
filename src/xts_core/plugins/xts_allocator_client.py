@@ -275,8 +275,6 @@ class XTSAllocatorClient(BaseXTSPlugin):
         '''
         if tags and not platform:
             plugin_utils.error('[default]--tags[/default] can only be used if [default]--platform[/default] is specified.')
-            sys.exit(1)
-
         if id:
             #ignore --platform and --tags
             payload = {'id': id}
