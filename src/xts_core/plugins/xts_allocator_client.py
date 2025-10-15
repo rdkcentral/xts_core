@@ -78,6 +78,15 @@ class XTSAllocatorClient(BaseXTSPlugin):
 
     @staticmethod
     def _format_slots_list_to_table(response:list[dict]) -> Table:
+        '''Format the list of slot dictionaries into a rich table
+        that can display their fields.
+
+        Args:
+            response (list[dict]): list of dictionaries containing information about slots.
+
+        Returns:
+            Table: Rich table object that can be used to print the slot information in a table.
+        '''
         table_headers = map(lambda x: x.capitalize(),response[0].keys())
         resp_table = Table(*table_headers)
         for entry in response:
@@ -120,6 +129,8 @@ class XTSAllocatorClient(BaseXTSPlugin):
                 file.write('')
 
     def _setup_allocate_args(self):
+        '''Setup the subparser for the allocate command.
+        '''
         allocate_parser = self._subparsers.add_parser('allocate', aliases=['alloc'])
         allocate_parser.add_argument('--slot-id', 
                                      dest='id', 
@@ -137,6 +148,8 @@ class XTSAllocatorClient(BaseXTSPlugin):
                                      help='Allocator server address.')
 
     def _setup_allocator_args(self):
+        '''Setup the subparsers for the allocator command.
+        '''
         allocator_parser = self._subparsers.add_parser('allocator')
         allocator_subparsers = allocator_parser.add_subparsers(dest='allocator_subcommand', required=True, metavar='COMMAND')
 
@@ -201,6 +214,8 @@ class XTSAllocatorClient(BaseXTSPlugin):
                                                       parents=[base_parser])
 
     def _setup_deallocate_args(self):
+        '''Setup the subparser for the deallocate command.
+        '''
         deallocate_parser = self._subparsers.add_parser('deallocate', aliases=['dealloc', 'free'])
         deallocate_parser.add_argument('--slot-id',
                                        dest='slot_id',
@@ -216,6 +231,8 @@ class XTSAllocatorClient(BaseXTSPlugin):
                                        help='Allocator server address.')
     
     def _setup_args(self):
+        '''Setup all the subparsers for the allocator client.
+        '''
         self._setup_allocate_args()
         self._setup_allocator_args()
         self._setup_deallocate_args()
@@ -383,9 +400,12 @@ class XTSAllocatorClient(BaseXTSPlugin):
             case 'list-slots':
                 server = kwargs.get('server')
                 resp = self._list_slots(server)
-                plugin_utils.info(f'Slots on allocator server \[{server}]:')
-                table = self._format_slots_list_to_table(resp.get('slots'))
-                rich.print(table)
+                if len(slots:= resp.get('slots',[])) >= 1:
+                    plugin_utils.info(f'Slots on allocator server \[{server}]:')
+                    table = self._format_slots_list_to_table(resp.get('slots'))
+                    rich.print(table)
+                else:
+                    plugin_utils.warning(f'The server \[{server}] has no slots configured.')
             case _:
                 plugin_utils.error('The allocator subcommand is not implemented')
 

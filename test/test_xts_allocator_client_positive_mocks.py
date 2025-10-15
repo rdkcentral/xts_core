@@ -19,6 +19,7 @@ def tmp_path():
     return workspace
 
 class StdOutCapture(list):
+    '''Used to capture the stdout output of a command.'''
     def __enter__(self):
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()
@@ -67,6 +68,7 @@ def test_save_servers(tmp_path:pathlib.Path, monkeypatch:pytest.MonkeyPatch):
     assert saved_data == data_to_save
 
 def test_allocator_list(monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator list command'''
     def mock_load_servers(obj: XTSAllocatorClient):
         return {'Test': {'url':'https://localhost:5000'}}
     monkeypatch.setattr(XTSAllocatorClient,'load_servers', mock_load_servers)
@@ -77,6 +79,7 @@ def test_allocator_list(monkeypatch:pytest.MonkeyPatch):
     assert 'Test: https://localhost:5000' in output_str
 
 def test_allocator_add(tmp_path:pathlib.Path, monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator add command'''
     config_file = tmp_path / 'test_xts_servers.yaml'
     monkeypatch.setattr(XTSAllocatorClient, 'CONFIG_FILE', str(config_file))
     with open(config_file, 'w+') as f:
@@ -89,6 +92,7 @@ def test_allocator_add(tmp_path:pathlib.Path, monkeypatch:pytest.MonkeyPatch):
     assert {'Test': {'url': 'https://localhost'}} == loaded_yaml
 
 def test_allocator_remove(tmp_path:pathlib.Path, monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator remove command and aliases.'''
     aliases = ['remove', 'rm']
     config_file = tmp_path / 'test_xts_servers.yaml'
     monkeypatch.setattr(XTSAllocatorClient, 'CONFIG_FILE', str(config_file))
@@ -137,6 +141,7 @@ def test_allocator_search(monkeypatch:pytest.MonkeyPatch):
     assert 'Test, Mock' in output_str
 
 def test_allocator_list_slots(monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator list-slots command.'''
     def mock_send_request(obj:XTSAllocatorClient, method, url, data=None):
         assert method == 'GET'
         assert 'https://localhost:5000/list_slots' == url
@@ -168,6 +173,7 @@ def test_allocator_list_slots(monkeypatch:pytest.MonkeyPatch):
     assert 'Test, Mock' in output_str
 
 def test_allocator_add_slot(monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator add-slot command.'''
     def mock_send_request(obj:XTSAllocatorClient, method, url, data=None):
         assert method == 'POST'
         assert url == 'https://localhost:5000/add_slot'
@@ -204,6 +210,7 @@ def test_allocator_add_slot(monkeypatch:pytest.MonkeyPatch):
     assert 'Slot added successfully' in '\n'.join(output)
 
 def test_allocator_update_slot(monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator update-slot command.'''
     def mock_send_request(obj:XTSAllocatorClient, method, url, data=None):
         assert method == 'POST'
         assert url == 'https://localhost:5000/update_slot'
@@ -227,6 +234,7 @@ def test_allocator_update_slot(monkeypatch:pytest.MonkeyPatch):
     assert 'Slot updated successfully' in '\n'.join(output)
 
 def test_allocator_remove_slot(monkeypatch:pytest.MonkeyPatch):
+    '''Test the allocator remove-slot command and aliases.'''
     def mock_send_request(obj:XTSAllocatorClient, method, url, data=None):
         assert method == 'POST'
         assert url == 'https://localhost:5000/delete_slot'
