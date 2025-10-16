@@ -20,10 +20,19 @@
 # * limitations under the License.
 # *
 #* ******************************************************************************
-import threading
-import time
+import os
 
 import rich
+
+def debug(debug_message: str):
+    """Prints a Blue debug message, when XTS_DEBUG
+        environment variable is set.
+
+    Args:
+        debug_message (str): The debug message to be printed.
+    """
+    if os.getenv('XTS_DEBUG'):
+        rich.print(f'[dodger_blue1][bold]DEBUG:[/bold] {debug_message}[/dodger_blue1]')
 
 def info(info_message: str):
     """
