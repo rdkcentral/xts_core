@@ -506,7 +506,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
         if state:
             payload['state'] = state
         if owner_email:
-            payload = owner_email
+            payload['owner_email'] = owner_email
         response = self._send_request('POST', f'{server}/update_slot', payload)
         if response:
             plugin_utils.info(response.get('message'))
