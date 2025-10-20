@@ -89,15 +89,16 @@ class XTSAllocatorClient(BaseXTSPlugin):
         '''
         table_headers = map(lambda x: x.capitalize(),response[0].keys())
         resp_table = Table(*table_headers)
+        
         for entry in response:
             row_values = []
             for value in entry.values():
                 if isinstance(value, list):
-                    row_values.append(', '.join(value))
+                    row_values.append(', '.join(map(str, value)))
                 elif isinstance(value, dict):
                     row_values.append(str(value))
                 else:
-                    row_values.append(value)
+                    row_values.append(str(value) if value is not None else "")
             resp_table.add_row(*row_values)
         return resp_table
 
@@ -146,6 +147,11 @@ class XTSAllocatorClient(BaseXTSPlugin):
                                      dest='server', 
                                      required=True, 
                                      help='Allocator server address.')
+        allocate_parser.add_argument(
+                                    '--user-email',
+                                    dest='user_email',
+                                    required=False,
+                                    help='Email of the user performing the allocation')
 
     def _setup_allocator_args(self):
         '''Setup the subparsers for the allocator command.
@@ -262,8 +268,8 @@ class XTSAllocatorClient(BaseXTSPlugin):
                        server: str,
                        id: int = None,
                        platform: str = None,
-                       tags: list = None
-                       ):
+                       tags: list = None,
+                       user_email: str = None):
         '''
         Allocate a test slot and retrieve its rack configuration.
 
@@ -275,17 +281,28 @@ class XTSAllocatorClient(BaseXTSPlugin):
         '''
         if tags and not platform:
             plugin_utils.error('[default]--tags[/default] can only be used if [default]--platform[/default] is specified.')
+        slot_payload = {}
         if id:
             #ignore --platform and --tags
-            payload = {'id': id}
+            slot_payload['id'] = id
             plugin_utils.warning('Ignoring [default]--platform[/default] and [default]--tags[/default] because [default]--id[/default] was provided.')
         else:
             #use --platform (required for allocation)
             if not platform:
                 plugin_utils.error('[default]--platform[/default] is required when [default]--id[/default] is not provided.')
-            payload = {'platform': platform, 'tags': tags}
+            slot_payload['platform'] = platform
+            
+            if tags:
+                slot_payload['tags'] = tags
 
-        response = self._send_request('POST', f'{server}/allocate', payload)
+        user_email = user_email or os.getenv("USER_EMAIL", "default@xts.local")
+
+        payload = {
+            "user": {"email": user_email},
+            "slot": slot_payload
+        }
+
+        response = self._send_request('POST', f'{server}/allocate_slot', payload)
         
         if response and 'slot_id' in response:
             allocated_slot_id = response['slot_id']
