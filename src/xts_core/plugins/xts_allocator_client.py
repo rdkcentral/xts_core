@@ -71,22 +71,11 @@ class XTSAllocatorClient(BaseXTSPlugin):
             
         try:
             response = requests.request(method, url, json=data)
-            # try parsing JSON even if status code is not 2xx
-            try:
-                resp_json = response.json()
-            except ValueError:
-                resp_json = {"message": response.text or "No response body"}
-
-            if not response.ok:
-                # Print the server-provided message
-                plugin_utils.error(
-                    f"Request failed ({response.status_code}): {resp_json.get('message', 'Unknown error')}"
-                )
-            return resp_json
-        
+            response.raise_for_status()
+            return response.json()
         except requests.exceptions.RequestException as e:
             plugin_utils.error(f'Error during request: {e}')
-            return {"message": str(e)}
+
 
     @staticmethod
     def _format_slots_list_to_table(response:list[dict]) -> Table:
