@@ -76,7 +76,6 @@ class XTSAllocatorClient(BaseXTSPlugin):
         except requests.exceptions.RequestException as e:
             plugin_utils.error(f'Error during request: {e}')
 
-
     @staticmethod
     def _format_slots_list_to_table(response:list[dict]) -> Table:
         '''Format the list of slot dictionaries into a rich table
@@ -199,6 +198,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
         add_slot_parser.add_argument('--rack-name', required=True, help='Rack name of the slot.', dest='rack_name')
         add_slot_parser.add_argument('--slot-name', required=True, help='Slot name.', dest='slot_name')
         add_slot_parser.add_argument('--state', choices=['free', 'allocated'], default='free', help='State of the slot.')
+        add_slot_parser.add_argument('--config', required=False, help='path to a YAML or JSON slot config file.')
 
         # update-slot
         update_slot_parser= allocator_subparsers.add_parser('update-slot',
@@ -462,13 +462,31 @@ class XTSAllocatorClient(BaseXTSPlugin):
                   owner_email:str|None,
                   state:str='',
                   description:str='',
-                  tags:list[str]=[]):
+                  tags:list[str]=[],
+                  config: str|None=None):
         '''
         Add a new slot to the allocator server.
 
         Args:
             args (list): Command-line arguments.
         '''
+
+        configuration = None
+        if config:
+            import json, yaml
+            try:
+                if config.endswith(('.yaml', '.yml')):
+                    with open(config, 'r') as f:
+                        configuration = yaml.safe_load(f)
+                elif config.endswith('.json'):
+                    with open(config, 'r') as f:
+                        configuration = json.load(f)
+                else:
+                    plugin_utils.warning(f"Unsupported config format for file: {config}")
+            except Exception as e:
+                plugin_utils.error(f"Failed to load configuration file: {e}")
+                configuration = None
+
         payload = {
             'rackName': rack_name,
             'slotName': slot_name,
@@ -478,6 +496,10 @@ class XTSAllocatorClient(BaseXTSPlugin):
             'state': state,
             'owner_email': owner_email,
         }
+
+        if configuration:
+            payload['configuration'] = configuration
+            
         response = self._send_request('POST', f'{server}/add_slot', payload)
         if response:
             plugin_utils.info(response.get('message'))
