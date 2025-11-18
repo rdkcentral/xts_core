@@ -33,7 +33,7 @@ defined within an XTS configuration file (`.xts` extension). It allows for:
 The script utilizes the `yaml_runner` module to handle configuration
 parsing and command execution.
 """
-import argparse
+
 import os
 import re
 import sys
@@ -55,13 +55,18 @@ except ImportError:
 
 try:
     from .utils import info, error, warning, is_url
-except:
+except ImportError:
     from xts_core.utils import info, error, warning, is_url
 
 try:
     from . import xts_alias
-except:
+except ImportError:
     from xts_core import xts_alias
+
+try:
+    from .xts_arg_parser import XTSArgumentParser
+except ImportError:
+    from xts_core.xts_arg_parser import XTSArgumentParser
 
 
 class XTS():
@@ -136,7 +141,7 @@ class XTS():
             list: Remaining arguments after parsing, including the command name.
         """
         # quick parser for alias commands
-        pre_parser = argparse.ArgumentParser(prog="xts", add_help=True)
+        pre_parser = XTSArgumentParser(prog="xts", add_help=True)
         pre_subparsers = pre_parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(pre_subparsers)
 
@@ -155,7 +160,7 @@ class XTS():
             self._find_xts_config() 
 
         # full parser with YAML/plugin commands
-        parser = argparse.ArgumentParser(prog="xts")
+        parser = XTSArgumentParser(prog="xts")
         subparsers = parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(subparsers)
 
@@ -379,7 +384,8 @@ class XTS():
                 yaml_runner = YamlRunner(self._command_sections,
                         program='xts',
                         hierarchical=True,
-                        fail_fast=True)
+                        fail_fast=True,
+                        parser_class=XTSArgumentParser)
                 _,_,exit_code = yaml_runner.run(args)
                 sys.exit(sorted(exit_code)[-1])
             except Exception as e:

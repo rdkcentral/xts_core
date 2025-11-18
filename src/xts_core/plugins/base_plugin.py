@@ -11,11 +11,16 @@ try:
 except:
     import utils as plugin_utils
 
+try:
+    from xts_core.xts_arg_parser import XTSArgumentParser
+except ImportError:
+    from xts_arg_parser import XTSArgumentParser
+
 class BaseXTSPlugin(ABC):
     config_dir = pathlib.Path.home().joinpath('.xts')
 
     def __init__(self):
-        self._prog_parser = argparse.ArgumentParser(prog='xts')
+        self._prog_parser = XTSArgumentParser(prog='xts')
         self._subparsers = self._prog_parser.add_subparsers(dest='command')
 
     @abstractmethod
