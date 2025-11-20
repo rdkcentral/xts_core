@@ -9,9 +9,9 @@ import yaml
 import rich
 from rich.table import Table
 try:
-    from base_plugin import BaseXTSPlugin, plugin_utils
+    from base_plugin import BaseXTSPlugin, plugin_utils, XTSArgumentParser
 except:
-    from xts_core.plugins.base_plugin import BaseXTSPlugin, plugin_utils
+    from xts_core.plugins.base_plugin import BaseXTSPlugin, plugin_utils, XTSArgumentParser
 
 
 
@@ -163,7 +163,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
         # remove
         # Since a lot of these parsers share arguments we can use the base parsers as parents
         # to save on adding the same arguments multiple times.
-        remove_base = argparse.ArgumentParser('remove base', add_help=False,)
+        remove_base = XTSArgumentParser('remove base', add_help=False,)
         remove_base.add_argument('name', help='Name of the server to remove')
         remove_parser = allocator_subparsers.add_parser('remove',
                                                         help='Remove an allocator server',
@@ -176,10 +176,10 @@ class XTSAllocatorClient(BaseXTSPlugin):
         add_parser.add_argument('url', help='URL for the allocator server')
         # list
         allocator_subparsers.add_parser('list', help='List all known allocators')
-        base_parser = argparse.ArgumentParser('base', add_help=False)
+        base_parser = XTSArgumentParser('base', add_help=False)
         base_parser.add_argument('--server', required=True, help='Server URL')
         # search
-        search_base = argparse.ArgumentParser('search_base',
+        search_base = XTSArgumentParser('search_base',
                                               add_help=False,
                                               parents=[base_parser])
         search_base.add_argument('--platform', help='Platform of DUT')
@@ -189,7 +189,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
                                                         help='Search for slots on an allocator server',
                                                         parents=[search_base])
         # add-slot
-        add_base = argparse.ArgumentParser('add_base',
+        add_base = XTSArgumentParser('add_base',
                                             add_help=False,
                                             parents=[search_base])
         add_base.add_argument('--owner-email', help='Owner email (if allocated).', dest='owner_email')

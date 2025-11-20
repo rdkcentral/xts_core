@@ -3,9 +3,10 @@ name = "xts"
 version = "2.0.0"
 dependencies = [
     "rich>=13.7.1",
-    "yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@2.0.0",
+    "yaml_runner @ git+https://github.com/rdkcentral/yaml_runner.git@2.1.0",
     "pyinstaller>=6.12.0",
-    "requests>=2.32.3"
+    "requests>=2.32.3",
+    "rich-argparse>=1.7.2"
 ]
 [tool.setuptools.packages.find]
 include = ["xts_core", "xts_core.plugins"]
