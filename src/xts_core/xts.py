@@ -33,7 +33,7 @@ defined within an XTS configuration file (`.xts` extension). It allows for:
 The script utilizes the `yaml_runner` module to handle configuration
 parsing and command execution.
 """
-
+import argparse
 import os
 import re
 import sys
@@ -224,55 +224,63 @@ class XTS():
         Returns:
             list[str]: Remaining args starting with the command name, e.g. ["run", ...].
         """
-        if len(sys.argv) < 2:
-            self._print_global_help()
-            raise SystemExit(0)
+        first_arg_parser = XTSArgumentParser(prog='xts',
+                                             add_help=False)
+        first_arg_parser.add_argument('alias',
+                                      action='store',
+                                      help='Name of alias to run command from',
+                                      default=None,
+                                      nargs=argparse.OPTIONAL,
+                                      choices=xts_alias._get_aliases().keys() or [])
+        first_arg_parser.add_argument('--alias',
+                                      action='store_true',
+                                      help='Add/Remove or list aliases',
+                                      dest='alias_option',
+                                      default=False)
+        args, remaining_args = first_arg_parser.parse_known_args()
+        if (args.alias, args.alias_option) == (None, False):
+            if len(remaining_args) > 0:
+                if '--help' in remaining_args:
+                    first_arg_parser.print_help()
+                    raise SystemExit(0)
+                else:
+                    first_arg_parser.error(f'Unrecognized argument: {remaining_args[0]}')
+            else:
+                first_arg_parser.print_help()
+                raise SystemExit(0)
 
         # first argument is --alias
-        if sys.argv[1] == "--alias":
-            # remove "--alias" from argv and run built-in handler
-            sys.argv.pop(1)
-            self._handle_alias_builtin()
-            sys.exit(0)
-
-        first = sys.argv[1]
-
-        allowed_positionals = self._get_allowed_plugin_positionals()
-        if first in allowed_positionals:
-            sys.argv.pop(1)
-            return [first] + sys.argv[1:]
-        
-        # first argument is alias name
-        alias_name = first
-        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(alias_name)
-        if not resolved_xts_path:
-            error(f"Alias '{alias_name}' not found. Add it via: xts --alias <path|url|dir> [--name <name>]")
+        if args.alias_option:
+            if args.alias:
+                remaining_args.append(args.alias)
+            xts_alias.run_alias_builtin(remaining_args)
+            raise SystemExit(0)
+        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(args.alias)
 
         # laod xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
-        self._used_args.append(alias_name)
-        sys.argv.pop(1)
 
-        if len(sys.argv) < 2:
-            parser = XTSArgumentParser(prog=f"xts {alias_name}", add_help=True)
-            subparsers = parser.add_subparsers(dest="command", required=False)
+        # if len(sys.argv) < 2:
+        #     parser = XTSArgumentParser(prog=f"xts {args.alias}", add_help=True)
+        #     subparsers = parser.add_subparsers(dest="command", required=False)
 
-            for command, description in self._get_yaml_command_choices():
-                subparsers.add_parser(command, help=description, add_help=False)
+        #     for command, description in self._get_yaml_command_choices():
+        #         subparsers.add_parser(command, help=description, add_help=False)
 
-            parser.print_help()
-            raise SystemExit(0)
+        #     parser.print_help()
+        #     raise SystemExit(0)
         
-        parser = XTSArgumentParser(prog=f"xts {alias_name}")
-        subparsers = parser.add_subparsers(dest="command", required=True)
+        # parser = XTSArgumentParser(prog=f"xts {args.alias}")
+        # subparsers = parser.add_subparsers(dest="command", required=True)
 
-        for command, description in self._get_yaml_command_choices():
-            subparsers.add_parser(command,
-                                  help=description,
-                                  add_help=False)
+        # for command, description in self._get_yaml_command_choices():
+        #     subparsers.add_parser(command,
+        #                           help=description,
+        #                           add_help=False)
 
-        parsed_args, remaining = parser.parse_known_args()
-        return [parsed_args.command] + remaining
+        # parsed_args, remaining = parser.parse_known_args()
+        # return [parsed_args.command] + remaining
+        return remaining_args
 
     def run(self):
         """Run the XTS app.
@@ -281,23 +289,14 @@ class XTS():
             SystemExit: Raised when unrecogised arguments are given.
         """
         args = self._parse_first_arg()
-        # plugin run (allocate only)
-        allowed_positionals = set(self._get_allowed_plugin_positionals())
-        if args and args[0] in allowed_positionals:
-            for plugin in self._plugins:
-                if args[0] in getattr(plugin(), "provided_positionals", []):
-                    plugin().run(args)
-            # if allocate was requested but no plugin handled it
-            error(f"No plugin handled positional command: {args[0]}")
-            return
-
         # YAML runner path (after alias resolution)
         try:
             yaml_runner = YamlRunner(
                 self._command_sections,
                 program='xts',
                 hierarchical=True,
-                fail_fast=True
+                fail_fast=True,
+                parser_class=XTSArgumentParser
             )
             _, _, exit_code = yaml_runner.run(args)
             sys.exit(sorted(exit_code)[-1])

@@ -26,6 +26,7 @@ Remove:
 - `xts --alias --remove <name>` removes the alias mapping from aliases.json
 """
 
+import argparse
 import os
 import hashlib
 import shutil
@@ -38,6 +39,11 @@ try:
     from . import utils
 except:
     from xts_core import utils
+
+try:
+    from  .xts_arg_parser import XTSArgumentParser
+except:
+    from xts_core.xts_arg_parser import XTSArgumentParser
 
 CACHE_DIR = os.path.expanduser("~/.xts/cache")
 ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
@@ -180,12 +186,18 @@ def add_alias(name: str, value: str) -> None:
     aliases[name] = value
     save_aliases(aliases)
 
-
-def list_aliases() -> dict:
+def _get_aliases() -> dict:
     """
     Return the alias mapping dictionary.
     """
     return load_aliases()
+
+def list_aliases() -> None:
+    aliases = _get_aliases()
+    if not aliases:
+        utils.warning('No aliases added')
+    for k, v in sorted(aliases.items()):
+        utils.info(f"[bold]{k}[/bold] [default]->[/default] {v}")
 
 
 def remove_alias(name: str) -> None:
@@ -266,7 +278,7 @@ def _print_alias_help_and_list() -> None:
     print("  xts --alias <path|url|dir> [--name <name>]")
     print("  xts --alias --add <path|url|dir> [--name <name>]")
     print("\nCurrent aliases:")
-    aliases = list_aliases()
+    aliases = _get_aliases()
     if not aliases:
         print("  (none)")
     else:
@@ -288,7 +300,36 @@ def run_alias_builtin(argv: list[str]) -> int:
     - If <path|url|dir> is provided, adding is the default behavior.
     - For directories, all *.xts files are added.
     """
-
+    alias_parser = XTSArgumentParser(prog='xts --alias')
+    alias_parser.add_argument('uri',
+                              action='store',
+                              default=None,
+                              help='URI of xts file to add alias of',
+                              nargs=argparse.OPTIONAL)
+    alias_parser.add_argument('--list',
+                              action='store_true',
+                              default=False,
+                              help='List all aliases')
+    alias_parser.add_argument('--remove', '--rm',
+                              action='store',
+                              help='Remove alias',
+                              default=None,
+                              metavar='ALIAS_NAME',
+                              dest='remove')
+    alias_parser.add_argument('--add',
+                              action='store',
+                              metavar='URI',
+                              default=None,
+                              help='Add an alias of an xts file URI')
+    alias_parser.add_argument('--name',
+                              action='store',
+                              help='Name to use for alias')
+    if len(argv) < 1:
+        alias_parser.print_help()
+        raise SystemExit(0)
+    args = alias_parser.parse_args(argv)
+    if args.list:
+        list_aliases()
     input_value = None
     name = None
     do_list = False
@@ -344,7 +385,7 @@ def run_alias_builtin(argv: list[str]) -> int:
         return 2
     
     if do_list:
-        aliases = list_aliases()
+        aliases = _get_aliases()
         if not aliases:
             print("  (none)")
         for k, v in sorted(aliases.items()):
