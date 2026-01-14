@@ -87,7 +87,7 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
-        self._used_args = []
+        # self._used_args = []
 
     @property
     def xts_config(self):
@@ -129,48 +129,6 @@ class XTS():
         else:
             error('xts config specified does not exist')    
 
-    def _get_plugin_positionals(self) -> list[str]:
-        """
-        Return plugin positional command names (e.g. allocate, deallocate, free).
-        """
-        cmds = []
-        for plugin in self._plugins:
-            cmds.extend(getattr(plugin(), "provided_positionals", []))
-
-        # de-dup while preserving order
-        seen = set()
-        out = []
-        for c in cmds:
-            if c not in seen:
-                seen.add(c)
-                out.append(c)
-        return out
-
-    def _get_allowed_plugin_positionals(self) -> list[str]:
-        """
-        Only accept allocate as a global positional command.
-        """
-        plugin_positionals = self._get_plugin_positionals()
-        return ["allocate"] if "allocate" in plugin_positionals else []
-    
-    def _print_global_help(self):
-        """
-        Requirement:
-          `xts` should return a list of available commands (in this case allocate and --alias).
-        """
-        # plugin_cmds = self._get_plugin_positionals()
-        allowed = self._get_allowed_plugin_positionals()
-        print("Available commands:")
-        for cmd in allowed:
-            print(f"  {cmd}")
-        print("  --alias")
-
-        print("\nExamples:")
-        print("  xts --alias --list")
-        print("  xts --alias ./hello_world.xts")
-        if allowed:
-            print(f"  xts {allowed[0]} ...")
-        print("  xts <alias> <command> ...")
 
     def _get_yaml_command_choices(self) -> list[tuple]:
         """
@@ -194,24 +152,19 @@ class XTS():
                 if key == 'command':
                     result = True
                     break
-                elif isinstance(value, dict):
-                    result = _is_command_section(value)
-            return result
+                elif isinstance(value, dict) and _is_command_section(value):
+                    return True
+            return False
+        
+        if not isinstance(self._xts_config, dict):
+            return command_sections
 
         for key, value in self._xts_config.items():
-            if isinstance(value, dict):
-                if _is_command_section(value):
-                    command_sections.update({key: self._xts_config.get(key)})
+            if isinstance(value, dict) and _is_command_section(value):
+                command_sections[key] = value
 
         return command_sections
     
-    def _handle_alias_builtin(self):
-        """
-        Handle the built-in alias commands via xts_alias.run_alias_builtin().
-        """
-        argv = sys.argv[1:]
-        exit_code = xts_alias.run_alias_builtin(argv)
-        sys.exit(exit_code)
 
     def _parse_first_arg(self):
         """
@@ -238,9 +191,10 @@ class XTS():
                                       dest='alias_option',
                                       default=False)
         args, remaining_args = first_arg_parser.parse_known_args()
+        
         if (args.alias, args.alias_option) == (None, False):
             if len(remaining_args) > 0:
-                if '--help' in remaining_args:
+                if '--help' in remaining_args or '-h' in remaining_args:
                     first_arg_parser.print_help()
                     raise SystemExit(0)
                 else:
@@ -257,29 +211,9 @@ class XTS():
             raise SystemExit(0)
         resolved_xts_path = xts_alias.resolve_alias_to_xts_path(args.alias)
 
-        # laod xts config remove alias name from argv before parsing
+        # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
 
-        # if len(sys.argv) < 2:
-        #     parser = XTSArgumentParser(prog=f"xts {args.alias}", add_help=True)
-        #     subparsers = parser.add_subparsers(dest="command", required=False)
-
-        #     for command, description in self._get_yaml_command_choices():
-        #         subparsers.add_parser(command, help=description, add_help=False)
-
-        #     parser.print_help()
-        #     raise SystemExit(0)
-        
-        # parser = XTSArgumentParser(prog=f"xts {args.alias}")
-        # subparsers = parser.add_subparsers(dest="command", required=True)
-
-        # for command, description in self._get_yaml_command_choices():
-        #     subparsers.add_parser(command,
-        #                           help=description,
-        #                           add_help=False)
-
-        # parsed_args, remaining = parser.parse_known_args()
-        # return [parsed_args.command] + remaining
         return remaining_args
 
     def run(self):

@@ -270,20 +270,6 @@ def add_alias_from_input(input_value: str, name: str | None) -> list[tuple[str, 
 
     raise FileNotFoundError(f"Not a url, file, or directory: {input_value}")
 
-def _print_alias_help_and_list() -> None:
-    print("Usage:")
-    print("  xts --alias --list")
-    print("  xts --alias --help")
-    print("  xts --alias --remove <name>")
-    print("  xts --alias <path|url|dir> [--name <name>]")
-    print("  xts --alias --add <path|url|dir> [--name <name>]")
-    print("\nCurrent aliases:")
-    aliases = _get_aliases()
-    if not aliases:
-        print("  (none)")
-    else:
-        for k, v in sorted(aliases.items()):
-            print(f"  {k} -> {v}")
 
 def run_alias_builtin(argv: list[str]) -> int:
     """
@@ -324,89 +310,32 @@ def run_alias_builtin(argv: list[str]) -> int:
     alias_parser.add_argument('--name',
                               action='store',
                               help='Name to use for alias')
-    if len(argv) < 1:
+    # show help & current aliases if no args
+    if not argv:
         alias_parser.print_help()
-        raise SystemExit(0)
+        print("\nCurrent aliases:")
+        list_aliases()
+        return 0
+    
     args = alias_parser.parse_args(argv)
+    
     if args.list:
         list_aliases()
-    input_value = None
-    name = None
-    do_list = False
-    remove_name = None
-    do_help = False
-
-    i = 0
-    while i < len(argv):
-        tok = argv[i]
-        if tok == "--list":
-            do_list = True
-            i += 1
-            continue
-        if tok == "--remove":
-            if i + 1 >= len(argv):
-                print("ERROR: --remove requires an alias name")
-                return 2
-            remove_name = argv[i + 1]
-            i += 2
-            continue
-        if tok == "--add":
-            # optional; doesn't change behavior
-            i += 1
-            continue
-        if tok == "--name":
-            if i + 1 >= len(argv):
-                print("ERROR: --name requires a value")
-                return 2
-            name = argv[i + 1]
-            i += 2
-            continue
-        if tok in ("--help", "-h"):
-            do_help = True
-            i += 1
-            continue
-
-        # first non-flag token is input_value
-        if input_value is None:
-            input_value = tok
-            i += 1
-            continue
-
-        # unexpected extra tokens
-        print(f"ERROR: Unexpected argument: {tok}")
-        return 2
-
-    if remove_name is not None:
-        removed = remove_alias(remove_name)
-        if removed:
-            print(f"Removed alias: {remove_name}")
+        return 0
+    
+    if args.remove is not None:
+        if remove_alias(args.remove):
+            print(f"Removed alias: {args.remove}")
             return 0
-        print(f"Alias not found: {remove_name}")
+        print(f"Alias not found: {args.remove}")
         return 2
-    
-    if do_list:
-        aliases = _get_aliases()
-        if not aliases:
-            print("  (none)")
-        for k, v in sorted(aliases.items()):
-            print(f"{k} -> {v}")
-        return 0
 
-    if input_value:
-        added = add_alias_from_input(input_value, name)
-        for k, v in added:
-            print(f"{k} -> {v}")
-        return 0
-    
-    if do_help:
-        _print_alias_help_and_list()
-        return 0
+    input_value = args.add or args.uri
+    if not input_value:
+        alias_parser.print_help()
+        return 2
 
-
-    print("Usage:")
-    print("  xts --alias --list")
-    print("  xts --alias --help")
-    print("  xts --alias --remove <name>")
-    print("  xts --alias <path|url|dir> [--name <name>]")
-    print("  xts --alias --add <path|url|dir> [--name <name>]")
-    return 2
+    added = add_alias_from_input(input_value, args.name)
+    for k, v in added:
+        print(f"{k} -> {v}")
+    return 0
