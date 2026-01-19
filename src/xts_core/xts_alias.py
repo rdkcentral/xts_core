@@ -149,7 +149,7 @@ def cache_local_file_to_cache(src: Path) -> str:
     cache_name = _cache_name_for_local_file(src)
     dst = Path(CACHE_DIR) / cache_name
 
-    shutil.copy2(src, dst)  #ovewrite to refresh
+    shutil.copy2(src, dst)  #overwrite to refresh
     return str(dst)
 
 def load_aliases() -> dict:
@@ -200,7 +200,7 @@ def list_aliases() -> None:
         utils.info(f"[bold]{k}[/bold] [default]->[/default] {v}")
 
 
-def remove_alias(name: str) -> None:
+def remove_alias(name: str) -> bool:
     """
     Remove an alias if it exists.
     """
@@ -208,7 +208,8 @@ def remove_alias(name: str) -> None:
     if name in aliases:
         del aliases[name]
         save_aliases(aliases)
-
+        return True
+    return False
 
 def resolve_alias_to_xts_path(alias_name: str) -> str | None:
     """
