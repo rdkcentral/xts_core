@@ -183,8 +183,7 @@ class XTS():
                                       action='store',
                                       help='Name of alias to run command from',
                                       default=None,
-                                      nargs=argparse.OPTIONAL,
-                                      choices=xts_alias._get_aliases().keys() or [])
+                                      nargs=argparse.OPTIONAL)
         first_arg_parser.add_argument('--alias',
                                       action='store_true',
                                       help='Add/Remove or list aliases',

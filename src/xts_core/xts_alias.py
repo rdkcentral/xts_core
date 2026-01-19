@@ -41,7 +41,7 @@ except:
     from xts_core import utils
 
 try:
-    from  .xts_arg_parser import XTSArgumentParser
+    from .xts_arg_parser import XTSArgumentParser
 except:
     from xts_core.xts_arg_parser import XTSArgumentParser
 
@@ -92,7 +92,7 @@ def _default_name_from_file(path: Path) -> str:
 
 def _cache_name_for_local_file(src: Path) -> str:
     """
-    Produce a stable cache filename for a local file, avoiding collisoins
+    Produce a stable cache filename for a local file, avoiding collisions
     between same-basename files in different directories.
     """
     resolved = str(src.expanduser().resolve())
