@@ -177,40 +177,27 @@ class XTS():
         """
         first_arg_parser = XTSArgumentParser(prog='xts',
                                              add_help=False)
-        first_arg_parser.add_argument('alias',
-                                      action='store',
-                                      help='Name of alias to run command from',
-                                      default=None,
-                                      nargs='?')
         first_arg_parser.add_argument('--alias',
                                       action='store_true',
                                       help='Add/Remove or list aliases',
                                       dest='alias_option',
                                       default=False)
-        args, remaining_args = first_arg_parser.parse_known_args()
-        
-        if (args.alias, args.alias_option) == (None, False):
-            if len(remaining_args) > 0:
-                if '--help' in remaining_args or '-h' in remaining_args:
-                    first_arg_parser.print_help()
-                    raise SystemExit(0)
-                else:
-                    first_arg_parser.error(f'Unrecognized argument: {remaining_args[0]}')
-            else:
-                first_arg_parser.print_help()
-                raise SystemExit(0)
+        args, remaining_args = first_arg_parser.parse_known_args(sys.argv[1:])
 
-        # first argument is --alias
         if args.alias_option:
-            if args.alias:
-                remaining_args.append(args.alias)
             xts_alias.run_alias_builtin(remaining_args)
             raise SystemExit(0)
-        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(args.alias)
+
+        if not remaining_args:
+            first_arg_parser.print_help()
+            raise SystemExit(0)
+
+        alias_name = remaining_args[0]
+        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(alias_name)
         
         if resolved_xts_path is None:
             error(
-                f'Unknown alias "{args.alias}". '
+                f'Unknown alias "{alias_name}". '
                 'Use "xts --alias --list" to see available aliases.'
             )
             raise SystemExit(1)
@@ -218,7 +205,7 @@ class XTS():
         # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
 
-        return remaining_args
+        return remaining_args[1:]
 
     def run(self):
         """Run the XTS app.
@@ -243,24 +230,13 @@ class XTS():
             raise SystemExit(0)
 
         try:
-            try:
-                yaml_runner = YamlRunner(
-                    self._command_sections,
-                    program='xts',
-                    hierarchical=True,
-                    fail_fast=True,
-                    parser_class=XTSArgumentParser
-                )
-            except TypeError as e:
-                if "parser_class" in str(e):
-                    yaml_runner = YamlRunner(
-                        self._command_sections,
-                        program='xts',
-                        hierarchical=True,
-                        fail_fast=True
-                    )
-                else:
-                    raise
+            yaml_runner = YamlRunner(
+                self._command_sections,
+                program='xts',
+                hierarchical=True,
+                fail_fast=True,
+                parser_class=XTSArgumentParser
+            )
 
             _, _, exit_code = yaml_runner.run(args)
             sys.exit(sorted(exit_code)[-1])

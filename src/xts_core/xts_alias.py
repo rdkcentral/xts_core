@@ -40,10 +40,10 @@ try:
 except:
     from xts_core import utils
 
-# try:
-#     from .xts_arg_parser import XTSArgumentParser
-# except:
-#     from xts_core.xts_arg_parser import XTSArgumentParser
+try:
+    from .xts_arg_parser import XTSArgumentParser
+except:
+    from xts_core.xts_arg_parser import XTSArgumentParser
 
 CACHE_DIR = os.path.expanduser("~/.xts/cache")
 ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
@@ -297,14 +297,13 @@ def run_alias_builtin(argv: list[str]) -> int:
       xts --alias --add <path|url|dir> [--name <name>]
 
     Notes:
-    - Addindg is only supported via --add.
     - For directories, all *.xts files are added.
     """
-    alias_parser = argparse.ArgumentParser(prog='xts --alias', add_help=True)
+    alias_parser = XTSArgumentParser(prog='xts --alias', add_help=True)
     alias_parser.add_argument('uri',
                               action='store',
                               default=None,
-                              help='URI of xts file to add alias of',
+                              help='URI of xts file to add or alias name',
                               nargs='?')
     alias_parser.add_argument('--list',
                               action='store_true',
@@ -344,15 +343,11 @@ def run_alias_builtin(argv: list[str]) -> int:
         print(f"Alias not found: {args.remove}")
         return 2
 
-    if args.uri and not args.add:
-        alias_parser.error('Adding aliases requires "--add <path|url|dir>". Example: xts --alias --add <path|url|dir> --name <name>')
+    if args.uri and args.add:
+        alias_parser.error('Provide the URI only once (either positional OR via "--add").')
         return 2
 
-    if args.uri and args.add:
-        alias_parser.error('Please provide the URI only once (use "--add <path|url|dir>" and do not also pass a positional URI).')
-        return 2
-    
-    input_value = args.add
+    input_value = args.add or args.uri
     if not input_value:
         alias_parser.print_help()
         return 2
