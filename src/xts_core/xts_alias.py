@@ -40,10 +40,10 @@ try:
 except:
     from xts_core import utils
 
-try:
-    from .xts_arg_parser import XTSArgumentParser
-except:
-    from xts_core.xts_arg_parser import XTSArgumentParser
+# try:
+#     from .xts_arg_parser import XTSArgumentParser
+# except:
+#     from xts_core.xts_arg_parser import XTSArgumentParser
 
 CACHE_DIR = os.path.expanduser("~/.xts/cache")
 ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
@@ -57,7 +57,6 @@ def ensure_dirs():
     os.makedirs(CACHE_DIR, exist_ok=True)
     os.makedirs(os.path.dirname(ALIAS_FILE), exist_ok=True)
 
-# move these to utils
 def _is_url(s: str) -> bool:
     """
     Return True if the string looks like an http(s) URL.
@@ -149,7 +148,7 @@ def cache_local_file_to_cache(src: Path) -> str:
     cache_name = _cache_name_for_local_file(src)
     dst = Path(CACHE_DIR) / cache_name
 
-    shutil.copy2(src, dst)  #overwrite to refresh
+    shutil.copy2(src, dst)  # overwrite to refresh
     return str(dst)
 
 def load_aliases() -> dict:
@@ -205,11 +204,26 @@ def remove_alias(name: str) -> bool:
     Remove an alias if it exists.
     """
     aliases = load_aliases()
-    if name in aliases:
-        del aliases[name]
-        save_aliases(aliases)
-        return True
-    return False
+
+    if name not in aliases:
+        return False
+    
+    cached_path = aliases[name]
+    del aliases[name] 
+    save_aliases(aliases)
+    
+    # remove cached file if it's inside ~/.xts/cache
+    try:
+        cache_root = Path(CACHE_DIR).expanduser().resolve()
+        target = Path(cached_path).expanduser().resolve()
+        if cache_root in target.parents and target.is_file():
+            target.unlink()
+    except Exception:
+        # don't fail alias removal due to cache cleanup issues
+        pass
+
+    return True 
+
 
 def resolve_alias_to_xts_path(alias_name: str) -> str | None:
     """
@@ -280,19 +294,18 @@ def run_alias_builtin(argv: list[str]) -> int:
       xts --alias --list
       xts --alias --help
       xts --alias --remove <name>
-      xts --alias <path|url|dir> [--name <name>]
       xts --alias --add <path|url|dir> [--name <name>]
 
     Notes:
-    - If <path|url|dir> is provided, adding is the default behavior.
+    - Addindg is only supported via --add.
     - For directories, all *.xts files are added.
     """
-    alias_parser = XTSArgumentParser(prog='xts --alias')
+    alias_parser = argparse.ArgumentParser(prog='xts --alias', add_help=True)
     alias_parser.add_argument('uri',
                               action='store',
                               default=None,
                               help='URI of xts file to add alias of',
-                              nargs=argparse.OPTIONAL)
+                              nargs='?')
     alias_parser.add_argument('--list',
                               action='store_true',
                               default=False,
@@ -331,12 +344,28 @@ def run_alias_builtin(argv: list[str]) -> int:
         print(f"Alias not found: {args.remove}")
         return 2
 
-    input_value = args.add or args.uri
+    if args.uri and not args.add:
+        alias_parser.error('Adding aliases requires "--add <path|url|dir>". Example: xts --alias --add <path|url|dir> --name <name>')
+        return 2
+
+    if args.uri and args.add:
+        alias_parser.error('Please provide the URI only once (use "--add <path|url|dir>" and do not also pass a positional URI).')
+        return 2
+    
+    input_value = args.add
     if not input_value:
         alias_parser.print_help()
         return 2
 
-    added = add_alias_from_input(input_value, args.name)
+    try:
+        added = add_alias_from_input(input_value, args.name)
+    except (FileNotFoundError, ValueError) as e:
+        alias_parser.error(str(e))
+        return 2
+    except Exception as e:
+        utils.error(f"Failed to add alias: {str(e)}")
+        return 2
+    
     for k, v in added:
         print(f"{k} -> {v}")
     return 0

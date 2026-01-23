@@ -147,11 +147,9 @@ class XTS():
         command_sections = {}
 
         def _is_command_section(subdict: dict) -> bool:
-            result = False
             for key, value in subdict.items():
                 if key == 'command':
-                    result = True
-                    break
+                    return True
                 elif isinstance(value, dict) and _is_command_section(value):
                     return True
             return False
@@ -183,7 +181,7 @@ class XTS():
                                       action='store',
                                       help='Name of alias to run command from',
                                       default=None,
-                                      nargs=argparse.OPTIONAL)
+                                      nargs='?')
         first_arg_parser.add_argument('--alias',
                                       action='store_true',
                                       help='Add/Remove or list aliases',
@@ -209,6 +207,13 @@ class XTS():
             xts_alias.run_alias_builtin(remaining_args)
             raise SystemExit(0)
         resolved_xts_path = xts_alias.resolve_alias_to_xts_path(args.alias)
+        
+        if resolved_xts_path is None:
+            error(
+                f'Unknown alias "{args.alias}". '
+                'Use "xts --alias --list" to see available aliases.'
+            )
+            raise SystemExit(1)
 
         # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
@@ -222,17 +227,44 @@ class XTS():
             SystemExit: Raised when unrecogised arguments are given.
         """
         args = self._parse_first_arg()
-        # YAML runner path (after alias resolution)
+        
+        if not args:
+            info("Available commands:")
+            choices = self._get_yaml_command_choices()
+            if not choices:
+                warning("No commands found in this .xts config.")
+                raise SystemExit(0)
+
+            for cmd, desc in choices:
+                if desc:
+                    info(f"  [bold]{cmd}[/bold] - {desc}")
+                else:
+                    info(f"  [bold]{cmd}[/bold]")
+            raise SystemExit(0)
+
         try:
-            yaml_runner = YamlRunner(
-                self._command_sections,
-                program='xts',
-                hierarchical=True,
-                fail_fast=True,
-                parser_class=XTSArgumentParser
-            )
+            try:
+                yaml_runner = YamlRunner(
+                    self._command_sections,
+                    program='xts',
+                    hierarchical=True,
+                    fail_fast=True,
+                    parser_class=XTSArgumentParser
+                )
+            except TypeError as e:
+                if "parser_class" in str(e):
+                    yaml_runner = YamlRunner(
+                        self._command_sections,
+                        program='xts',
+                        hierarchical=True,
+                        fail_fast=True
+                    )
+                else:
+                    raise
+
             _, _, exit_code = yaml_runner.run(args)
             sys.exit(sorted(exit_code)[-1])
+
         except Exception as e:
             error(
                 'An unrecognised command caused an error\n\n'
