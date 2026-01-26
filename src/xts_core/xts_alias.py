@@ -117,7 +117,6 @@ def fetch_url_to_cache(url):
         The filesystem path to the cached .xts file.
     """
     ensure_dirs()
-    # filename = hashlib.sha256(url.encode()).hexdigest() + ".xts"
     filename = Path(urlparse(url).path).name
     if not filename:
         raise ValueError(f"URL does not contain a filename: {url}")
@@ -185,14 +184,9 @@ def add_alias(name: str, value: str) -> None:
     aliases[name] = value
     save_aliases(aliases)
 
-def _get_aliases() -> dict:
-    """
-    Return the alias mapping dictionary.
-    """
-    return load_aliases()
 
 def list_aliases() -> None:
-    aliases = _get_aliases()
+    aliases = load_aliases()
     if not aliases:
         utils.warning('No aliases added')
     for k, v in sorted(aliases.items()):

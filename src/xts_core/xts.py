@@ -77,7 +77,6 @@ class XTS():
         _xts_config (dict, optional): Parsed XTS configuration data. Defaults to None.
         _command_sections (dict): Dictionary of command sections extracted from configuration.
         _plugins (list): List of plugin classes providing additional commands.
-        _used_args (list): List of command-line arguments used.
     """
 
     def __init__(self):
@@ -87,7 +86,6 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
-        # self._used_args = []
 
     @property
     def xts_config(self):
@@ -214,20 +212,6 @@ class XTS():
             SystemExit: Raised when unrecogised arguments are given.
         """
         args = self._parse_first_arg()
-        
-        if not args:
-            info("Available commands:")
-            choices = self._get_yaml_command_choices()
-            if not choices:
-                warning("No commands found in this .xts config.")
-                raise SystemExit(0)
-
-            for cmd, desc in choices:
-                if desc:
-                    info(f"  [bold]{cmd}[/bold] - {desc}")
-                else:
-                    info(f"  [bold]{cmd}[/bold]")
-            raise SystemExit(0)
 
         try:
             yaml_runner = YamlRunner(
