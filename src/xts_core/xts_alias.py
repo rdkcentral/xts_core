@@ -55,6 +55,36 @@ except:
 CACHE_DIR = os.path.expanduser("~/.xts/cache")
 ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
 
+def _get_cached_path(alias_info) -> str:
+    """
+    Extract cached path from alias info, handling both old and new formats.
+    
+    Args:
+        alias_info: Either a string (old format) or dict with 'cached_path' key (new format)
+    
+    Returns:
+        The cached file path
+    """
+    if isinstance(alias_info, dict):
+        return alias_info.get("cached_path", "")
+    return alias_info  # old format: just a string path
+
+
+def _get_source(alias_info) -> str:
+    """
+    Extract source path from alias info, handling both old and new formats.
+    
+    Args:
+        alias_info: Either a string (old format) or dict with 'source' key (new format)
+    
+    Returns:
+        The source path/URL
+    """
+    if isinstance(alias_info, dict):
+        return alias_info.get("source", alias_info.get("cached_path", "unknown"))
+    return alias_info  # old format: just a string path
+
+
 def ensure_dirs():
     """Ensure that the cache and alias directories exist.
 
@@ -220,7 +250,7 @@ def list_aliases() -> None:
     if not aliases:
         utils.warning('No aliases added')
     for k, v in sorted(aliases.items()):
-        source = v.get("source", v.get("cached_path", "unknown"))
+        source = _get_source(v)
         utils.info(f"[bold]{k}[/bold] [default]->[/default] {source}")
 
 
@@ -234,7 +264,7 @@ def remove_alias(name: str) -> bool:
         return False
     
     alias_info = aliases[name]
-    cached_path = alias_info.get("cached_path", alias_info) if isinstance(alias_info, dict) else alias_info
+    cached_path = _get_cached_path(alias_info)
     del aliases[name] 
     save_aliases(aliases)
     
@@ -265,9 +295,7 @@ def resolve_alias_to_xts_path(alias_name: str) -> str | None:
     alias_info = aliases.get(alias_name)
     if alias_info is None:
         return None
-    if isinstance(alias_info, dict):
-        return alias_info.get("cached_path")
-    return alias_info  # backwards compatibility
+    return _get_cached_path(alias_info)
 
 
 def add_alias_from_input(input_value: str, name: str | None) -> list[tuple[str, str]]:
@@ -330,7 +358,7 @@ def refresh_alias(alias_name: str) -> tuple[str, str]:
         tuple[str, str]: (alias_name, new_cached_path)
 
     Raises:
-        ValueError: If the alias doesn't exist.
+        ValueError: If the alias doesn't exist or was migrated from old format.
         FileNotFoundError: If the source file/directory no longer exists.
     """
     aliases = load_aliases()
@@ -343,8 +371,17 @@ def refresh_alias(alias_name: str) -> tuple[str, str]:
         raise ValueError(f"Cannot refresh alias '{alias_name}': missing source information")
     
     source = alias_info.get("source")
+    cached = alias_info.get("cached_path")
+    
     if not source:
         raise ValueError(f"Cannot refresh alias '{alias_name}': no source information available")
+    
+    # Check if this is a migrated alias (source == cached_path means unknown original)
+    if source == cached:
+        raise ValueError(
+            f"Cannot refresh alias '{alias_name}': original source unknown (migrated from old format). "
+            f"Remove and re-add the alias to enable refresh."
+        )
     
     # Determine if source is a URL or local path
     if _is_url(source):
