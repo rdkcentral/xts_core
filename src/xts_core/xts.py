@@ -86,6 +86,7 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
+        self._alias_name = None
 
     @property
     def xts_config(self):
@@ -202,6 +203,7 @@ class XTS():
 
         # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
+        self._alias_name = alias_name
 
         return remaining_args[1:]
 
@@ -214,9 +216,10 @@ class XTS():
         args = self._parse_first_arg()
 
         try:
+            prog_name = f'xts {self._alias_name}' if self._alias_name else 'xts'
             yaml_runner = YamlRunner(
                 self._command_sections,
-                program='xts',
+                program=prog_name,
                 hierarchical=True,
                 fail_fast=True,
                 parser_class=XTSArgumentParser
