@@ -77,6 +77,7 @@ class XTS():
         _xts_config (dict, optional): Parsed XTS configuration data. Defaults to None.
         _command_sections (dict): Dictionary of command sections extracted from configuration.
         _plugins (list): List of plugin classes providing additional commands.
+        _alias_name (str, optional): The alias name used to invoke the command. Defaults to None.
     """
 
     def __init__(self):
