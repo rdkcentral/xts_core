@@ -77,6 +77,7 @@ class XTS():
         _xts_config (dict, optional): Parsed XTS configuration data. Defaults to None.
         _command_sections (dict): Dictionary of command sections extracted from configuration.
         _plugins (list): List of plugin classes providing additional commands.
+        _alias_name (str, optional): The alias name used to invoke the command. Defaults to None.
     """
 
     def __init__(self):
@@ -86,6 +87,7 @@ class XTS():
         self._xts_config = None
         self._command_sections = {}
         self._plugins = [XTSAllocatorClient]
+        self._alias_name = None
 
     @property
     def xts_config(self):
@@ -171,9 +173,7 @@ class XTS():
         Direct .xts file usage from cwd or as the first argument is not supported.
 
         Returns:
-            tuple[str, list[str]]: A tuple containing (alias_name, remaining_args).
-                alias_name: The alias name used to invoke the command.
-                remaining_args: Remaining args starting with the command name, e.g. ["run", ...].
+            list[str]: Remaining args starting with the command name, e.g. ["run", ...].
         """
         first_arg_parser = XTSArgumentParser(prog='xts',
                                              add_help=False)
@@ -204,8 +204,9 @@ class XTS():
 
         # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
+        self._alias_name = alias_name
 
-        return alias_name, remaining_args[1:]
+        return remaining_args[1:]
 
     def run(self):
         """Run the XTS app.
@@ -213,10 +214,10 @@ class XTS():
         Raises:
             SystemExit: Raised when unrecogised arguments are given.
         """
-        alias_name, args = self._parse_first_arg()
+        args = self._parse_first_arg()
 
         try:
-            prog_name = f'xts {alias_name}'
+            prog_name = f'xts {self._alias_name}' if self._alias_name else 'xts'
             yaml_runner = YamlRunner(
                 self._command_sections,
                 program=prog_name,
