@@ -48,10 +48,9 @@ except ImportError:
 import yaml.scanner
 from yaml_runner import YamlRunner
 
-try:
-    from .plugins import XTSAllocatorClient
-except ImportError:
-    from xts_core.plugins import XTSAllocatorClient
+# Note: XTSAllocatorClient plugin removed in favor of centrally-managed
+# .xts files from allocator servers. Use aliases instead:
+#   xts alias add allocator http://server:5000/xts_allocator.xts
 
 try:
     from .utils import info, error, warning, is_url
@@ -81,7 +80,7 @@ class XTS():
         """
         self._xts_config = None
         self._command_sections = {}
-        self._plugins = [XTSAllocatorClient]
+        self._plugins = []  # Removed XTSAllocatorClient - use aliased .xts files instead
         self._used_args = []
 
 
