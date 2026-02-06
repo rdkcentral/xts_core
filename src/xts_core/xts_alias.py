@@ -2,6 +2,7 @@ import os
 import hashlib
 import json
 import requests
+import glob
 
 try:
     from . import utils
@@ -45,6 +46,37 @@ def fetch_url_to_cache(url):
             f.write(r.text)
 
     return path
+
+def find_xts_files(path, recursive=False):
+    """Find all .xts files in a directory.
+
+    Args:
+        path: Directory path to search in (can be relative or absolute).
+        recursive: If True, search recursively in subdirectories.
+
+    Returns:
+        List of absolute paths to .xts files found.
+    """
+    path = os.path.abspath(path)
+    
+    if not os.path.isdir(path):
+        return []
+    
+    xts_files = []
+    if recursive:
+        # Recursive search
+        for root, dirs, files in os.walk(path):
+            for file in files:
+                if file.endswith('.xts'):
+                    xts_files.append(os.path.join(root, file))
+    else:
+        # Non-recursive search - only immediate directory
+        for file in os.listdir(path):
+            file_path = os.path.join(path, file)
+            if os.path.isfile(file_path) and file.endswith('.xts'):
+                xts_files.append(file_path)
+    
+    return sorted(xts_files)
 
 def add_alias(name, value):
     """Add or update an alias.

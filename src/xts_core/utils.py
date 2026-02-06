@@ -56,6 +56,15 @@ def warning(warning_message:str):
     """
     rich.print(f'[dark_orange][bold]{warning_message}[/bold][/dark_orange]')
 
+def success(success_message: str):
+    """
+    Prints a Green success message.
+
+    Args:
+        success_message (str): The success message to be printed.
+    """
+    rich.print(f'[green]{success_message}[/green]')
+
 def is_url(s):
     """Check if a string is a URL.
 

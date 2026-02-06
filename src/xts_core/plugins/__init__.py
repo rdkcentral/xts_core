@@ -20,4 +20,6 @@
 # * limitations under the License.
 # *
 #* ******************************************************************************
-from .xts_allocator_client import XTSAllocatorClient
+
+# XTSAllocatorClient plugin removed - use aliased .xts files instead
+# from .xts_allocator_client import XTSAllocatorClient

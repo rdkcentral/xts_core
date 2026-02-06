@@ -47,20 +47,101 @@ except ImportError:
 
 import yaml.scanner
 from yaml_runner import YamlRunner
+from rich.console import Console
 
 # Note: XTSAllocatorClient plugin removed in favor of centrally-managed
 # .xts files from allocator servers. Use aliases instead:
 #   xts alias add allocator http://server:5000/xts_allocator.xts
 
 try:
-    from .utils import info, error, warning, is_url
+    from .utils import info, error, warning, success, is_url
 except:
-    from xts_core.utils import info, error, warning, is_url
+    from xts_core.utils import info, error, warning, success, is_url
 
 try:
     from . import xts_alias
 except:
     from xts_core import xts_alias
+
+
+class RichHelpFormatter(argparse.RawTextHelpFormatter):
+    """Custom argparse formatter that adds rich color markup to help text."""
+    
+    def __init__(self, prog):
+        super().__init__(prog, max_help_position=40, width=100)
+    
+    def _format_usage(self, usage, actions, groups, prefix):
+        """Add color to usage line."""
+        usage = super()._format_usage(usage, actions, groups, prefix)
+        return f"[bold cyan]{usage}[/bold cyan]"
+    
+    def _format_action(self, action):
+        """Add color to action items (commands and options)."""
+        result = super()._format_action(action)
+        if action.option_strings:
+            # Color option flags like -h, --help
+            for opt in action.option_strings:
+                result = result.replace(opt, f"[yellow]{opt}[/yellow]")
+        elif action.dest != 'help' and hasattr(action, 'choices') and action.choices:
+            # Color subcommand names
+            for choice in action.choices:
+                result = result.replace(f"  {choice}", f"  [bold green]{choice}[/bold green]")
+        return result
+    
+    def format_help(self):
+        """Override to add section header colors."""
+        help_text = super().format_help()
+        # Color section headers
+        help_text = help_text.replace('positional arguments:', '[bold yellow]positional arguments:[/bold yellow]')
+        help_text = help_text.replace('options:', '[bold yellow]options:[/bold yellow]')
+        help_text = help_text.replace('optional arguments:', '[bold yellow]optional arguments:[/bold yellow]')
+        return help_text
+
+
+class RichArgumentParser(argparse.ArgumentParser):
+    """Custom ArgumentParser that uses rich to print help with colors."""
+    
+    def __init__(self, *args, **kwargs):
+        if 'formatter_class' not in kwargs:
+            kwargs['formatter_class'] = RichHelpFormatter
+        super().__init__(*args, **kwargs)
+        self.console = Console()
+        self._command_list = []  # Store commands for nice display
+    
+    def print_help(self, file=None):
+        """Override to use rich.print for colored output."""
+        self.console.print(self.format_help())
+    
+    def set_command_list(self, commands):
+        """Store the list of available commands for better error messages."""
+        self._command_list = commands
+    
+    def set_alias_name(self, alias_name):
+        """Store the alias name for display in error messages."""
+        self._alias_name = alias_name
+    
+    def error(self, message):
+        """Override to use rich for error messages and show nice command list."""
+        # Check if this is a missing command error
+        if 'required: command' in message and self._command_list:
+            console = Console()
+            if hasattr(self, '_alias_name'):
+                console.print(f"\n[bold cyan]{self._alias_name}[/bold cyan] [dim]commands:[/dim]")
+            else:
+                console.print("\n[bold yellow]Available commands:[/bold yellow]")
+            for cmd, desc in self._command_list:
+                if cmd == 'alias':
+                    continue  # Skip alias in loaded .xts command list
+                # Truncate long descriptions
+                short_desc = desc.split('\n')[0][:80]
+                console.print(f"  [bold green]{cmd:25}[/bold green] [dim]{short_desc}[/dim]")
+            console.print(f"\n[dim]Use [bold]xts {self._alias_name if hasattr(self, '_alias_name') else '<command>'} <command> --help[/bold] for more information[/dim]")
+            sys.exit(1)
+        else:
+            # Default error handling
+            self.print_usage(sys.stderr)
+            from xts_core.utils import error as rich_error
+            rich_error(f"{message}")
 
 
 class XTS():
@@ -134,8 +215,32 @@ class XTS():
         Returns:
             list: Remaining arguments after parsing, including the command name.
         """
+        # If no arguments provided, show help with available aliases
+        if len(sys.argv) == 1:
+            console = Console()
+            
+            # Show available aliases FIRST (most important)
+            aliases = xts_alias.list_aliases()
+            if aliases:
+                console.print("\n[bold yellow]Available aliases:[/bold yellow]")
+                for alias_name in sorted(aliases.keys()):
+                    console.print(f"  [bold cyan]{alias_name}[/bold cyan]")
+                console.print("\n[dim]Use [bold]xts <alias>[/bold] to load commands from an alias[/dim]")
+                console.print("[dim]Example: [bold cyan]xts allocator --help[/bold cyan][/dim]")
+                console.print("\n[dim]To manage aliases: [bold]xts alias [add|list|remove][/bold][/dim]")
+            else:
+                # No aliases yet, show how to add them
+                console.print("\n[yellow]No aliases configured yet.[/yellow]")
+                console.print("\n[bold]Get started:[/bold]")
+                console.print("  [cyan]xts alias add <name> <path>[/cyan]  - Add a single .xts file")
+                console.print("  [cyan]xts alias add .[/cyan]              - Add all .xts files in current directory")
+                console.print("  [cyan]xts alias add -r <dir>[/cyan]       - Recursively add .xts files")
+                console.print("\n[dim]Example: [bold cyan]xts alias add allocator http://server:5000/xts_allocator.xts[/bold cyan][/dim]")
+            
+            sys.exit(0)
+        
         # quick parser for alias commands
-        pre_parser = argparse.ArgumentParser(prog="xts", add_help=True)
+        pre_parser = RichArgumentParser(prog="xts", add_help=True)
         pre_subparsers = pre_parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(pre_subparsers)
 
@@ -145,8 +250,10 @@ class XTS():
             sys.exit(0)
 
         # resolve first arg as config/alias
+        resolved_alias_name = None
         if len(sys.argv) > 1:
             first_arg = sys.argv[1]
+            resolved_alias_name = first_arg  # Store for display
             resolved = self._resolve_first_arg(first_arg)
             if not resolved:
                 self._find_xts_config()
@@ -154,14 +261,21 @@ class XTS():
             self._find_xts_config() 
 
         # full parser with YAML/plugin commands
-        parser = argparse.ArgumentParser(prog="xts")
+        parser = RichArgumentParser(prog="xts")
         subparsers = parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(subparsers)
 
-        for command, description in self._get_command_choices():
+        command_list = list(self._get_command_choices())
+        for command, description in command_list:
             subparsers.add_parser(command,
                                   help=description,
                                   add_help=False)
+        
+        # Pass command list and alias name to parser for nice error messages
+        parser.set_command_list(command_list)
+        if resolved_alias_name:
+            parser.set_alias_name(resolved_alias_name)
+        
         # Parsing here will raise SystemExit() early if an invalid command is used or
         # if --help is called with no other arguments.
         parsed_args, remaining = parser.parse_known_args()
@@ -228,23 +342,64 @@ class XTS():
         - If the user provides an absolute path, use it as-is.
         - If the user provides a relative path, resolve it against the
             current working directory.
+        - If the user provides a directory path (., *.xts, or directory),
+            recursively find all .xts files and add them as aliases.
         """
         if parsed_args.alias_cmd == "add":
+            name = parsed_args.name
             path = parsed_args.path
+            recursive = getattr(parsed_args, 'recursive', False)
 
-            if not is_url(path):
-                path = os.path.abspath(path)
-            xts_alias.add_alias(parsed_args.name, path)
-            print(f"Alias '{parsed_args.name}' -> '{path}' added.")
+            # Check if this is directory-based batch addition
+            if path is None or name in ['.', '*.xts'] or os.path.isdir(name):
+                # Directory-based alias creation
+                search_dir = name if name not in ['.', '*.xts'] else '.'
+                info(f"Scanning {search_dir} for .xts files{'(recursive)' if recursive else ''}...")
+                xts_files = xts_alias.find_xts_files(search_dir, recursive=recursive)
+                
+                if not xts_files:
+                    warning(f"No .xts files found in {search_dir}")
+                    return
+                
+                added_count = 0
+                for xts_file in xts_files:
+                    # Generate alias name from filename without extension
+                    base_name = os.path.splitext(os.path.basename(xts_file))[0]
+                    xts_alias.add_alias(base_name, xts_file)
+                    success(f"  + [bold cyan]{base_name}[/bold cyan] -> [dim]{xts_file}[/dim]")
+                    added_count += 1
+                
+                success(f"\n+ Added [bold]{added_count}[/bold] alias(es) from [cyan]{search_dir}[/cyan]")
+                # Show usage hint
+                console = Console()
+                console.print(f"\n[dim]Use [bold cyan]xts <alias>[/bold cyan] to load commands[/dim]")
+                if added_count == 1:
+                    console.print(f"[dim]Example: [bold cyan]xts {base_name} --help[/bold cyan][/dim]")
+                else:
+                    console.print(f"[dim]Example: [bold cyan]xts --help[/bold cyan] to see all aliases[/dim]")
+            else:
+                # Single file/URL alias
+                if not is_url(path):
+                    path = os.path.abspath(path)
+                xts_alias.add_alias(name, path)
+                success(f"+ Alias [bold cyan]{name}[/bold cyan] -> [dim]{path}[/dim]")
+                # Show usage hint
+                console = Console()
+                console.print(f"[dim]Use: [bold cyan]xts {name} --help[/bold cyan][/dim]")
 
         elif parsed_args.alias_cmd == "list":
             aliases = xts_alias.list_aliases()
-            for k, v in aliases.items():
-                print(f"{k} -> {v}")
+            if not aliases:
+                warning("No aliases defined. Use [bold]xts alias add[/bold] to create one.")
+            else:
+                info(f"\nRegistered aliases ({len(aliases)}):")
+                for k, v in aliases.items():
+                    success(f"  [bold cyan]{k}[/bold cyan] -> [dim]{v}[/dim]")
+                print()
 
         elif parsed_args.alias_cmd == "remove":
             xts_alias.remove_alias(parsed_args.name)
-            print(f"Alias '{parsed_args.name}' removed.")
+            success(f"+ Removed alias [bold cyan]{parsed_args.name}[/bold cyan]")
 
     def _add_alias_subcommands(self, subparsers):
         """
@@ -254,19 +409,25 @@ class XTS():
         Args:
             subparsers (argparse._SubParsersAction): The subparsers object to attach alias commands to.
         """
-        alias_parser = subparsers.add_parser('alias', help='Manage XTS aliases')
+        alias_parser = subparsers.add_parser('alias', help='Manage XTS aliases', formatter_class=RichHelpFormatter)
         alias_subparsers = alias_parser.add_subparsers(dest='alias_cmd', required=True)
 
-        # alias add <name> <path>
-        add_parser = alias_subparsers.add_parser('add', help='Add a new alias')
-        add_parser.add_argument('name')
-        add_parser.add_argument('path')
+        # alias add <name> <path> or alias add <directory> [-r]
+        add_parser = alias_subparsers.add_parser('add', 
+            help='Add alias(es). Use: add <name> <path> for single, or add <dir> [-r] for batch',
+            formatter_class=RichHelpFormatter)
+        add_parser.add_argument('name', 
+            help='Alias name, or directory path (., *.xts, ./path/) to add multiple')
+        add_parser.add_argument('path', nargs='?', default=None,
+            help='Path or URL (required for single alias, omit for directory mode)')
+        add_parser.add_argument('-r', '--recursive', action='store_true',
+            help='Recursively search for .xts files in subdirectories')
 
         # alias list
-        list_parser = alias_subparsers.add_parser('list', help='List all aliases')
+        list_parser = alias_subparsers.add_parser('list', help='List all aliases', formatter_class=RichHelpFormatter)
 
         # alias remove <name>
-        remove_parser = alias_subparsers.add_parser('remove', help='Remove an alias')
+        remove_parser = alias_subparsers.add_parser('remove', help='Remove an alias', formatter_class=RichHelpFormatter)
         remove_parser.add_argument('name', help='Name of the alias to remove')
     
     def _find_xts_config(self):
@@ -287,7 +448,8 @@ class XTS():
             self._user_select_config(xts_configs)
         elif len(xts_configs) < 1:
             if len(self._plugins) < 1:
-                error('No config found.')
+                # No config and no plugins - let argparse show help
+                pass
             else:
                 warning('No config found. Continuing only with commands from plugins.')
         else:

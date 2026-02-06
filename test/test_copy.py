@@ -5,10 +5,9 @@ import os
 import sys
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(dir_path+"/../")
+sys.path.append(dir_path+"/../src")
 
-from src.yaml_runner import add_choices_to_help
-from src.plugins.xts_allocator_client import XTSAllocatorClient
+from xts_core.plugins.xts_allocator_client import XTSAllocatorClient
 
 @pytest.fixture
 def client():
@@ -92,7 +91,7 @@ def test_allocate_slot(monkeypatch, client):
     """Test the allocation of a slot."""
     mock_response = {"slot_id": "12345"}
     
-    def mock_send_request(method, url, data=None):
+    def mock_send_request(self, method, url, data=None):
         return mock_response if method == "POST" else None
 
     monkeypatch.setattr(XTSAllocatorClient, "send_request", mock_send_request)
@@ -106,12 +105,12 @@ def test_deallocate_slot(monkeypatch, client):
     """Test the deallocation of a slot."""
     mock_response = {"status": "deallocated"}
 
-    def mock_send_request(method, url, data=None):
-        return mock_response if method == "POST" else None
+    def mock_send_request(self, method, url, data=None):
+        return mock_response if method == "DELETE" else None
 
     monkeypatch.setattr(XTSAllocatorClient, "send_request", mock_send_request)
 
-    args = ["--server", "http://example.com", "--slot", "12345"]
+    args = ["--server", "http://example.com", "--id", "12345"]
     result = client._deallocate_slot(args)
     assert result == mock_response
 

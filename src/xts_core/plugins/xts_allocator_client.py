@@ -178,10 +178,9 @@ class XTSAllocatorClient(BaseXTSPlugin):
             
             if rack_config:
                 rich.print(f"[cyan]Rack Configuration: {rack_config}[/cyan]")
-                return rack_config
             else:
                 rich.print("[red]Failed to retrieve rack configuration.[/red]")
-                return None
+            return response
         else:
             rich.print("[red]Slot allocation failed.[/red]")
             return None
@@ -361,6 +360,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
         response = self.send_request("DELETE", f"{parsed_args.server}/deallocate", payload)
         if response:
             rich.print(f"[green]Slot deallocated successfully: {response}[/green]")
+        return response
 
     def _search_slots(self, args: list):
         """
