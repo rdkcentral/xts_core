@@ -1,0 +1,543 @@
+#!/usr/bin/env python3
+#** *****************************************************************************
+# *
+# * If not stated otherwise in this file or this component's LICENSE file the
+# * following copyright and licenses apply:
+# *
+# * Copyright 2026 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *
+# http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *
+#* ******************************************************************************
+
+"""Interactive wizard for creating and editing XTS configuration files.
+
+Provides a prompted workflow for building .xts files with support for:
+- Progress saving on CTRL-C interruption
+- Resume from saved state
+- Command creation and editing
+- Function definition
+- Validation and testing
+"""
+
+import json
+import os
+import re
+import signal
+import sys
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+import yaml
+try:
+    from yaml import CSafeDumper as SafeDumper
+except ImportError:
+    from yaml import SafeDumper
+
+try:
+    from .utils import error, warning, success, info
+    from .xts_validator import XTSValidator
+except:
+    from xts_core.utils import error, warning, success, info
+    from xts_core.xts_validator import XTSValidator
+
+
+class WizardState:
+    """Manages wizard state for save/resume functionality."""
+    
+    def __init__(self, filepath: str):
+        self.filepath = filepath
+        self.state_file = f"{filepath}.xts-wizard-state"
+        self.config = {"commands": {}, "functions": {}}
+        self.current_step = "start"
+        self.interrupted = False
+    
+    def load(self) -> bool:
+        """Load saved state if exists."""
+        if os.path.exists(self.state_file):
+            try:
+                with open(self.state_file) as f:
+                    data = json.load(f)
+                    self.config = data.get('config', self.config)
+                    self.current_step = data.get('current_step', self.current_step)
+                return True
+            except Exception as e:
+                warning(f"Could not load saved state: {e}")
+        return False
+    
+    def save(self):
+        """Save current state."""
+        try:
+            with open(self.state_file, 'w') as f:
+                json.dump({
+                    'config': self.config,
+                    'current_step': self.current_step,
+                    'filepath': self.filepath
+                }, f, indent=2)
+            info(f"Progress saved to: {self.state_file}")
+        except Exception as e:
+            error(f"Could not save state: {e}")
+    
+    def cleanup(self):
+        """Remove state file after successful completion."""
+        if os.path.exists(self.state_file):
+            os.remove(self.state_file)
+
+
+class XTSWizard:
+    """Interactive wizard for XTS file creation."""
+    
+    def __init__(self, filepath: str, edit_mode: bool = False):
+        self.filepath = filepath
+        self.edit_mode = edit_mode
+        self.state = WizardState(filepath)
+        self.validator = XTSValidator()
+        
+        # Setup CTRL-C handler
+        signal.signal(signal.SIGINT, self._handle_interrupt)
+    
+    def _handle_interrupt(self, signum, frame):
+        """Handle CTRL-C gracefully."""
+        print("\n")
+        response = input("Save current progress? (y/n): ").strip().lower()
+        if response == 'y':
+            self.state.save()
+            success("Progress saved! Resume with: xts create --resume")
+        sys.exit(0)
+    
+    def run(self, resume: bool = False):
+        """Run the wizard."""
+        if resume:
+            if not self.state.load():
+                error("No saved state found")
+                return 1
+            info("Resuming from saved progress...")
+            print()
+        elif self.edit_mode:
+            if not self._load_existing():
+                return 1
+        
+        self._print_header()
+        
+        if not resume and not self.edit_mode:
+            self._show_intro()
+        
+        # Main wizard flow
+        if self.edit_mode:
+            self._edit_workflow()
+        else:
+            self._create_workflow()
+        
+        # Validate before writing
+        if self._validate_config():
+            self._write_config()
+            self.state.cleanup()
+            success(f"\n✓ Successfully {'updated' if self.edit_mode else 'created'}: {self.filepath}")
+            return 0
+        else:
+            error("\n✗ Configuration has errors - not saving")
+            response = input("Save progress for later? (y/n): ").strip().lower()
+            if response == 'y':
+                self.state.save()
+            return 1
+    
+    def _print_header(self):
+        """Print wizard header."""
+        mode = "Edit" if self.edit_mode else "Create"
+        print("=" * 70)
+        print(f"  XTS Configuration Wizard - {mode} Mode")
+        print("=" * 70)
+        print()
+    
+    def _show_intro(self):
+        """Show introduction text."""
+        print("This wizard will help you create an XTS configuration file.")
+        print("Press CTRL-C at any time to save progress and exit.")
+        print()
+    
+    def _load_existing(self) -> bool:
+        """Load existing file for editing."""
+        if not os.path.exists(self.filepath):
+            error(f"File not found: {self.filepath}")
+            return False
+        
+        try:
+            with open(self.filepath) as f:
+                from yaml import CSafeLoader as SafeLoader
+                self.state.config = yaml.load(f, SafeLoader) or {}
+            success(f"Loaded: {self.filepath}")
+            print()
+            return True
+        except Exception as e:
+            error(f"Could not load file: {e}")
+            return False
+    
+    def _create_workflow(self):
+        """Workflow for creating new file."""
+        # Ask for basic info
+        print("Let's start by creating some commands.")
+        print()
+        
+        while True:
+            self._add_command()
+            
+            more = input("\nAdd another command? (y/n): ").strip().lower()
+            if more != 'y':
+                break
+        
+        # Ask about functions
+        print("\n" + "-" * 70)
+        add_funcs = input("Add reusable functions? (y/n): ").strip().lower()
+        if add_funcs == 'y':
+            while True:
+                self._add_function()
+                more = input("\nAdd another function? (y/n): ").strip().lower()
+                if more != 'y':
+                    break
+    
+    def _edit_workflow(self):
+        """Workflow for editing existing file."""
+        while True:
+            print("\nCurrent configuration:")
+            print(f"  Commands: {len(self.state.config.get('commands', {}))}")
+            print(f"  Functions: {len(self.state.config.get('functions', {}))}")
+            print()
+            print("Options:")
+            print("  1. Add command")
+            print("  2. Edit command")
+            print("  3. Delete command")
+            print("  4. Add function")
+            print("  5. Edit function")
+            print("  6. Delete function")
+            print("  7. Done editing")
+            print()
+            
+            choice = input("Select option (1-7): ").strip()
+            
+            if choice == '1':
+                self._add_command()
+            elif choice == '2':
+                self._edit_command()
+            elif choice == '3':
+                self._delete_command()
+            elif choice == '4':
+                self._add_function()
+            elif choice == '5':
+                self._edit_function()
+            elif choice == '6':
+                self._delete_function()
+            elif choice == '7':
+                break
+            else:
+                warning("Invalid choice")
+    
+    def _add_command(self):
+        """Interactively add a command."""
+        print("\n" + "=" * 70)
+        print("Adding new command")
+        print("=" * 70)
+        
+        # Get command name
+        while True:
+            name = input("\nCommand name (e.g., 'build', 'test_unit'): ").strip()
+            if not name:
+                warning("Name required")
+                continue
+            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+                warning("Invalid name - use letters, numbers, underscore only")
+                continue
+            if name in self.state.config.get('commands', {}):
+                warning(f"Command '{name}' already exists")
+                continue
+            break
+        
+        # Get description
+        desc = input("Description: ").strip()
+        
+        # Get command
+        print("\nCommand to execute (use {{arg_name}} for arguments):")
+        print("Example: curl {{url}} | python3 -c \"{{format_json}}\"")
+        command = input("> ").strip()
+        
+        cmd_def = {
+            "description": desc,
+            "command": command
+        }
+        
+        # Add arguments
+        add_args = input("\nAdd arguments? (y/n): ").strip().lower()
+        if add_args == 'y':
+            cmd_def['args'] = []
+            while True:
+                arg = self._prompt_for_arg()
+                if arg:
+                    cmd_def['args'].append(arg)
+                more = input("Add another argument? (y/n): ").strip().lower()
+                if more != 'y':
+                    break
+        
+        # Add formatter
+        add_formatter = input("\nAdd output formatter? (y/n): ").strip().lower()
+        if add_formatter == 'y':
+            formatter = input("Formatter command or {{function_name}}: ").strip()
+            if formatter:
+                cmd_def['formatter'] = formatter
+        
+        if 'commands' not in self.state.config:
+            self.state.config['commands'] = {}
+        self.state.config['commands'][name] = cmd_def
+        
+        success(f"✓ Command '{name}' added")
+    
+    def _prompt_for_arg(self) -> Optional[Dict]:
+        """Prompt for single argument definition."""
+        print()
+        arg_name = input("Argument name: ").strip()
+        if not arg_name:
+            return None
+        
+        arg_desc = input("Description: ").strip()
+        required = input("Required? (y/n) [y]: ").strip().lower() or 'y'
+        
+        arg = {
+            "name": arg_name,
+            "description": arg_desc,
+            "required": required == 'y'
+        }
+        
+        if not arg['required']:
+            default = input("Default value: ").strip()
+            if default:
+                arg['default'] = default
+        
+        return arg
+    
+    def _add_function(self):
+        """Interactively add a function."""
+        print("\n" + "=" * 70)
+        print("Adding reusable function")
+        print("=" * 70)
+        
+        while True:
+            name = input("\nFunction name: ").strip()
+            if not name:
+                warning("Name required")
+                continue
+            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
+                warning("Invalid name")
+                continue
+            break
+        
+        desc = input("Description: ").strip()
+        print("\nCommand (receives stdin):")
+        command = input("> ").strip()
+        
+        if 'functions' not in self.state.config:
+            self.state.config['functions'] = {}
+        
+        self.state.config['functions'][name] = {
+            "description": desc,
+            "command": command
+        }
+        
+        success(f"✓ Function '{name}' added")
+    
+    def _edit_command(self):
+        """Edit existing command."""
+        commands = self.state.config.get('commands', {})
+        if not commands:
+            warning("No commands to edit")
+            return
+        
+        print("\nExisting commands:")
+        for i, name in enumerate(commands.keys(), 1):
+            print(f"  {i}. {name}")
+        
+        choice = input("\nCommand name to edit: ").strip()
+        if choice not in commands:
+            warning("Command not found")
+            return
+        
+        # Re-prompt for all fields
+        print(f"\nEditing: {choice}")
+        print("(Press enter to keep current value)")
+        
+        cmd = commands[choice]
+        
+        desc = input(f"Description [{cmd.get('description', '')}]: ").strip()
+        if desc:
+            cmd['description'] = desc
+        
+        command = input(f"Command [{cmd.get('command', '')}]: ").strip()
+        if command:
+            cmd['command'] = command
+        
+        success(f"✓ Command '{choice}' updated")
+    
+    def _delete_command(self):
+        """Delete a command."""
+        commands = self.state.config.get('commands', {})
+        if not commands:
+            warning("No commands to delete")
+            return
+        
+        print("\nExisting commands:")
+        for i, name in enumerate(commands.keys(), 1):
+            print(f"  {i}. {name}")
+        
+        choice = input("\nCommand name to delete: ").strip()
+        if choice not in commands:
+            warning("Command not found")
+            return
+        
+        confirm = input(f"Delete '{choice}'? (y/n): ").strip().lower()
+        if confirm == 'y':
+            del commands[choice]
+            success(f"✓ Command '{choice}' deleted")
+    
+    def _edit_function(self):
+        """Edit existing function."""
+        functions = self.state.config.get('functions', {})
+        if not functions:
+            warning("No functions to edit")
+            return
+        
+        print("\nExisting functions:")
+        for i, name in enumerate(functions.keys(), 1):
+            print(f"  {i}. {name}")
+        
+        choice = input("\nFunction name to edit: ").strip()
+        if choice not in functions:
+            warning("Function not found")
+            return
+        
+        func = functions[choice]
+        
+        desc = input(f"Description [{func.get('description', '')}]: ").strip()
+        if desc:
+            func['description'] = desc
+        
+        command = input(f"Command [{func.get('command', '')}]: ").strip()
+        if command:
+            func['command'] = command
+        
+        success(f"✓ Function '{choice}' updated")
+    
+    def _delete_function(self):
+        """Delete a function."""
+        functions = self.state.config.get('functions', {})
+        if not functions:
+            warning("No functions to delete")
+            return
+        
+        print("\nExisting functions:")
+        for i, name in enumerate(functions.keys(), 1):
+            print(f"  {i}. {name}")
+        
+        choice = input("\nFunction name to delete: ").strip()
+        if choice not in functions:
+            warning("Function not found")
+            return
+        
+        confirm = input(f"Delete '{choice}'? (y/n): ").strip().lower()
+        if confirm == 'y':
+            del functions[choice]
+            success(f"✓ Function '{choice}' deleted")
+    
+    def _validate_config(self) -> bool:
+        """Validate current configuration."""
+        print("\n" + "=" * 70)
+        print("Validating configuration...")
+        print("=" * 70)
+        
+        # Write to temp file for validation
+        temp_file = f"{self.filepath}.tmp"
+        try:
+            with open(temp_file, 'w') as f:
+                yaml.dump(self.state.config, f, SafeDumper, default_flow_style=False, sort_keys=False)
+            
+            is_valid, errors, warnings = self.validator.validate_file(temp_file, verbose=True)
+            
+            if errors:
+                error(f"\n✗ Found {len(errors)} error(s):")
+                for err in errors:
+                    print(f"  • {err}")
+            
+            if warnings:
+                warning(f"\n⚠ Found {len(warnings)} warning(s):")
+                for warn in warnings:
+                    print(f"  • {warn}")
+            
+            os.remove(temp_file)
+            return is_valid
+            
+        except Exception as e:
+            error(f"Validation failed: {e}")
+            if os.path.exists(temp_file):
+                os.remove(temp_file)
+            return False
+    
+    def _write_config(self):
+        """Write final configuration to file."""
+        with open(self.filepath, 'w') as f:
+            # Write copyright header
+            f.write("#" + "*" * 78 + "\n")
+            f.write("# *\n")
+            f.write("# * If not stated otherwise in this file or this component's LICENSE file\n")
+            f.write("# * the following copyright and licenses apply:\n")
+            f.write("# *\n")
+            f.write("# * Copyright 2026 RDK Management\n")
+            f.write("# *\n")
+            f.write("# * Licensed under the Apache License, Version 2.0 (the \"License\");\n")
+            f.write("# * you may not use this file except in compliance with the License.\n")
+            f.write("# * You may obtain a copy of the License at\n")
+            f.write("# *\n")
+            f.write("# *\n")
+            f.write("# * http://www.apache.org/licenses/LICENSE-2.0\n")
+            f.write("# *\n")
+            f.write("# * Unless required by applicable law or agreed to in writing, software\n")
+            f.write("# * distributed under the License is distributed on an \"AS IS\" BASIS,\n")
+            f.write("# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n")
+            f.write("# * See the License for the specific language governing permissions and\n")
+            f.write("# * limitations under the License.\n")
+            f.write("# *\n")
+            f.write("#" + "*" * 78 + "\n\n")
+            
+            # Write YAML
+            yaml.dump(self.state.config, f, SafeDumper, default_flow_style=False, sort_keys=False)
+
+
+def main():
+    """CLI entry point."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Interactive XTS file creation wizard")
+    parser.add_argument('file', help='Path to .xts file')
+    parser.add_argument('--edit', action='store_true', help='Edit existing file')
+    parser.add_argument('--resume', action='store_true', help='Resume from saved state')
+    
+    args = parser.parse_args()
+    
+    # Ensure .xts extension
+    filepath = args.file
+    if not filepath.endswith('.xts'):
+        filepath += '.xts'
+    
+    wizard = XTSWizard(filepath, edit_mode=args.edit)
+    exit_code = wizard.run(resume=args.resume)
+    sys.exit(exit_code)
+
+
+if __name__ == '__main__':
+    main()

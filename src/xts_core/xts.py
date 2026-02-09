@@ -161,7 +161,12 @@ class XTS():
         """
         self._xts_config = None
         self._command_sections = {}
-        self._plugins = []  # Removed XTSAllocatorClient - use aliased .xts files instead
+        # Load built-in plugins
+        try:
+            from .plugins.xts_tools_plugin import XTSToolsPlugin
+            self._plugins = [XTSToolsPlugin]
+        except ImportError:
+            self._plugins = []
         self._used_args = []
 
 
@@ -388,18 +393,39 @@ class XTS():
                 console.print(f"[dim]Use: [bold cyan]xts {name} --help[/bold cyan][/dim]")
 
         elif parsed_args.alias_cmd == "list":
-            aliases = xts_alias.list_aliases()
+            check_updates = getattr(parsed_args, 'check_updates', False)
+            aliases = xts_alias.list_aliases(check_updates=check_updates)
             if not aliases:
                 warning("No aliases defined. Use [bold]xts alias add[/bold] to create one.")
             else:
-                info(f"\nRegistered aliases ({len(aliases)}):")
-                for k, v in aliases.items():
-                    success(f"  [bold cyan]{k}[/bold cyan] -> [dim]{v}[/dim]")
-                print()
+                if not check_updates:
+                    info(f"\nRegistered aliases ({len(aliases)}):")
+                    for k, v in aliases.items():
+                        success(f"  [bold cyan]{k}[/bold cyan] -> [dim]{v}[/dim]")
+                    print()
+                    info("[dim]Tip: Use [bold cyan]xts alias list --check[/bold cyan] to check for updates[/dim]")
+                else:
+                    print()  # Newline after update check output
 
         elif parsed_args.alias_cmd == "remove":
             xts_alias.remove_alias(parsed_args.name)
             success(f"+ Removed alias [bold cyan]{parsed_args.name}[/bold cyan]")
+
+        elif parsed_args.alias_cmd == "refresh":
+            if parsed_args.name == "all":
+                # Refresh all aliases
+                aliases = xts_alias.list_aliases()
+                refreshed = 0
+                for name in aliases:
+                    if xts_alias.refresh_alias(name):
+                        refreshed += 1
+                success(f"+ Refreshed {refreshed}/{len(aliases)} aliases")
+            else:
+                # Refresh single alias
+                xts_alias.refresh_alias(parsed_args.name)
+
+        elif parsed_args.alias_cmd == "clean":
+            xts_alias.clean_broken_aliases()
 
     def _add_alias_subcommands(self, subparsers):
         """
@@ -423,12 +449,21 @@ class XTS():
         add_parser.add_argument('-r', '--recursive', action='store_true',
             help='Recursively search for .xts files in subdirectories')
 
-        # alias list
+        # alias list [--check]
         list_parser = alias_subparsers.add_parser('list', help='List all aliases', formatter_class=RichHelpFormatter)
+        list_parser.add_argument('--check', '-c', action='store_true', dest='check_updates',
+            help='Check for updates (slower)')
 
         # alias remove <name>
         remove_parser = alias_subparsers.add_parser('remove', help='Remove an alias', formatter_class=RichHelpFormatter)
         remove_parser.add_argument('name', help='Name of the alias to remove')
+
+        # alias refresh <name|all>
+        refresh_parser = alias_subparsers.add_parser('refresh', help='Refresh alias from source', formatter_class=RichHelpFormatter)
+        refresh_parser.add_argument('name', help='Alias name to refresh, or "all" for all aliases')
+
+        # alias clean
+        clean_parser = alias_subparsers.add_parser('clean', help='Find and remove broken aliases', formatter_class=RichHelpFormatter)
     
     def _find_xts_config(self):
         """

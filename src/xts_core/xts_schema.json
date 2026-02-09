@@ -1,0 +1,146 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://rdkcentral.github.io/xts_core/schemas/xts-config.json",
+  "title": "XTS Configuration Schema",
+  "description": "Schema for XTS (.xts) command configuration files",
+  "type": "object",
+  "properties": {
+    "functions": {
+      "type": "object",
+      "description": "Reusable formatter functions callable via {{function_name}} syntax",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Human-readable description of the function"
+            },
+            "command": {
+              "type": "string",
+              "description": "Shell command or script to execute"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "commands": {
+      "type": "object",
+      "description": "Command definitions",
+      "patternProperties": {
+        "^[a-zA-Z_][a-zA-Z0-9_]*$": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Human-readable description shown in help text"
+            },
+            "command": {
+              "type": "string",
+              "description": "Shell command to execute"
+            },
+            "args": {
+              "type": "array",
+              "description": "Positional arguments for the command",
+              "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Argument name (used as placeholder in command)"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Help text for the argument"
+                  },
+                  "required": {
+                    "type": "boolean",
+                    "description": "Whether argument is required",
+                    "default": true
+                  },
+                  "default": {
+                    "type": "string",
+                    "description": "Default value if not provided"
+                  },
+                  "choices": {
+                    "type": "array",
+                    "description": "Valid values for this argument",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": ["string", "int", "float", "bool"],
+                    "description": "Data type of the argument",
+                    "default": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "options": {
+              "type": "array",
+              "description": "Optional flags/options for the command",
+              "items": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Option flag (e.g., --verbose, -v)"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Help text for the option"
+                  },
+                  "action": {
+                    "type": "string",
+                    "enum": ["store_true", "store_false", "store"],
+                    "description": "Action when option is used",
+                    "default": "store_true"
+                  },
+                  "default": {
+                    "description": "Default value if not provided"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "formatter": {
+              "type": "string",
+              "description": "Post-processing command to format output (can reference functions)"
+            },
+            "environment": {
+              "type": "object",
+              "description": "Environment variables to set for this command",
+              "patternProperties": {
+                "^[A-Z_][A-Z0-9_]*$": {
+                  "type": "string"
+                }
+              }
+            },
+            "working_directory": {
+              "type": "string",
+              "description": "Directory to execute command in"
+            },
+            "timeout": {
+              "type": "integer",
+              "description": "Command timeout in seconds",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "minProperties": 1
+}
