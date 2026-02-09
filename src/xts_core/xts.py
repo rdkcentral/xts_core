@@ -129,17 +129,42 @@ class RichArgumentParser(argparse.ArgumentParser):
         # Check if this is a missing command error
         if 'required: command' in message and self._command_list:
             console = Console()
+            
+            # Header with alias name
             if hasattr(self, '_alias_name'):
-                console.print(f"\n[bold cyan]{self._alias_name}[/bold cyan] [dim]commands:[/dim]")
+                header = Text()
+                header.append(f"{self._alias_name}", style="bold cyan")
+                header.append(" commands", style="dim")
+                console.print(Panel(header, border_style="cyan", padding=(0, 1)))
+                console.print()
             else:
-                console.print("\n[bold yellow]Available commands:[/bold yellow]")
+                console.print("\n[bold yellow]Available commands:[/bold yellow]\n")
+            
+            # Display commands with colors and descriptions
             for cmd, desc in self._command_list:
                 if cmd == 'alias':
                     continue  # Skip alias in loaded .xts command list
-                # Truncate long descriptions
-                short_desc = desc.split('\n')[0][:80]
-                console.print(f"  [bold green]{cmd:25}[/bold green] [dim]{short_desc}[/dim]")
-            console.print(f"\n[dim]Use [bold]xts {self._alias_name if hasattr(self, '_alias_name') else '<command>'} <command> --help[/bold] for more information[/dim]")
+                
+                # Get first line of description and truncate if too long
+                if desc:
+                    short_desc = desc.split('\n')[0]
+                    if len(short_desc) > 70:
+                        short_desc = short_desc[:67] + "..."
+                else:
+                    short_desc = ""
+                
+                # Color format: command in green, description in dim
+                if short_desc:
+                    console.print(f"  [bold green]{cmd:25}[/bold green] [dim]{short_desc}[/dim]")
+                else:
+                    console.print(f"  [bold green]{cmd}[/bold green]")
+            
+            # Footer with usage hint
+            console.print()
+            if hasattr(self, '_alias_name'):
+                console.print(f"[dim]Use [bold cyan]xts {self._alias_name} <command> --help[/bold cyan] for more information[/dim]")
+            else:
+                console.print(f"[dim]Use [bold]xts <command> --help[/bold] for more information[/dim]")
             sys.exit(1)
         else:
             # Default error handling
