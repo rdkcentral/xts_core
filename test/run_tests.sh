@@ -19,8 +19,8 @@ pip install -q pytest pytest-cov 2>/dev/null
 echo "Running tests..."
 echo
 
-# Run tests with coverage
-pytest test_xts_alias_enhanced.py test_xts_validator.py test_xts_allocator_client.py \
+# Run tests with coverage (excluding wizard tests for now - needs API fixes)
+pytest test_xts_alias_enhanced.py test_xts_validator.py test_xts_allocator_client.py test_xts_main.py \
     -v \
     --tb=short \
     --cov=../src/xts_core \
