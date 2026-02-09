@@ -4,9 +4,14 @@
 
 Comprehensive test suite for XTS enhancements including universal caching, validation infrastructure, and directory scanning features.
 
-**Total Tests:** 61  
+**Total Tests:** 70  
 **Status:** ✓ All passing  
-**Coverage:** 65% xts_alias.py, 78% xts_validator.py
+**Overall Coverage:** 29% (540/1873 statements)  
+**Module Coverage:**
+- xts_allocator_client.py: 68%
+- xts_alias.py: 65%
+- xts_validator.py: 78%
+- utils.py: 93%
 
 ## Test Suites
 
