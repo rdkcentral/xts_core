@@ -541,5 +541,202 @@ class TestGetCachePath:
         assert path1 == path2
 
 
+class TestDirectoryUIInteraction:
+    """Test directory scanning with user prompts and bulk addition."""
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_user_accepts(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test adding directory when user accepts prompt."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        # Call add_alias with directory path
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        # Verify user was prompted
+        mock_input.assert_called_once()
+        assert 'y/n' in mock_input.call_args[0][0].lower()
+        
+        # Verify files were added
+        aliases = xts_alias.list_aliases()
+        
+        # Should have added 3 files (config0, config1, config2)
+        assert len(aliases) >= 3
+        assert any('config0' in name for name in aliases.keys())
+        assert any('config1' in name for name in aliases.keys())
+        assert any('config2' in name for name in aliases.keys())
+    
+    @patch('builtins.input', return_value='n')
+    def test_add_directory_user_declines(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test adding directory when user declines prompt."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        # Call add_alias with directory path
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        # Verify user was prompted
+        mock_input.assert_called_once()
+        
+        # Verify NO files were added
+        aliases = xts_alias.list_aliases()
+        assert len(aliases) == 0
+    
+    @patch('builtins.input', return_value='Y')  # Test uppercase
+    def test_add_directory_user_accepts_uppercase(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test adding directory with uppercase Y response."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        # Call add_alias with directory path
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        # Verify files were added (case insensitive)
+        aliases = xts_alias.list_aliases()
+        assert len(aliases) >= 3
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_shows_file_count(self, mock_input, temp_xts_dir, sample_xts_files, capsys):
+        """Test that directory prompt shows correct file count."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        captured = capsys.readouterr()
+        
+        # Should show "Found 3 .xts file(s)"
+        assert "Found 3" in captured.out or "3 .xts" in captured.out
+        
+        # Should list the files
+        assert "config0.xts" in captured.out
+        assert "config1.xts" in captured.out
+        assert "config2.xts" in captured.out
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_handles_duplicates(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test directory addition with duplicate alias names."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        # First add a single file with name 'config0'
+        single_file = sample_xts_files['single']
+        xts_alias.add_alias('config0', str(single_file), recursive=False)
+        
+        # Now add the directory which also has config0.xts
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        aliases = xts_alias.list_aliases()
+        
+        # Original config0 should be preserved
+        assert 'config0' in aliases
+        
+        # New config0 should get renamed (config0_1, config0_2, etc.)
+        assert any('config0_' in name for name in aliases.keys())
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_recursive(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test recursive directory scanning."""
+        nested_dir = sample_xts_files['nested_dir']
+        
+        xts_alias.add_alias('nested', str(nested_dir), recursive=True)
+        
+        aliases = xts_alias.list_aliases()
+        
+        # Should find all 3 files: top.xts, middle.xts, bottom.xts
+        assert len(aliases) >= 3
+        assert any('top' in name for name in aliases.keys())
+        assert any('middle' in name for name in aliases.keys())
+        assert any('bottom' in name for name in aliases.keys())
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_non_recursive(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test non-recursive directory scanning."""
+        nested_dir = sample_xts_files['nested_dir']
+        
+        xts_alias.add_alias('nested', str(nested_dir), recursive=False)
+        
+        aliases = xts_alias.list_aliases()
+        
+        # Should only find top.xts
+        assert len(aliases) == 1
+        assert any('top' in name for name in aliases.keys())
+        # Should NOT find nested files
+        assert not any('middle' in name for name in aliases.keys())
+        assert not any('bottom' in name for name in aliases.keys())
+    
+    def test_add_empty_directory(self, temp_xts_dir, tmp_path, capsys):
+        """Test adding directory with no .xts files."""
+        empty_dir = tmp_path / "empty"
+        empty_dir.mkdir()
+        
+        xts_alias.add_alias('empty', str(empty_dir), recursive=False)
+        
+        captured = capsys.readouterr()
+        
+        # Should show warning about no files
+        assert "No .xts files found" in captured.out or "warning" in captured.out.lower()
+        
+        # Should not save anything
+        aliases = xts_alias.list_aliases()
+        assert len(aliases) == 0
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_metadata_tracking(self, mock_input, temp_xts_dir, sample_xts_files):
+        """Test that metadata is tracked for bulk-added files."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        # Load metadata
+        metadata = xts_alias.load_metadata()
+        
+        # Should have metadata for each added file
+        assert len(metadata) == 3
+        
+        # Each metadata entry should have required fields
+        for meta in metadata.values():
+            assert 'source' in meta  # Correct field name
+            assert 'cached_at' in meta
+            assert 'hash' in meta
+            assert 'source_mtime' in meta
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_success_message(self, mock_input, temp_xts_dir, sample_xts_files, capsys):
+        """Test success message shows correct count."""
+        multi_dir = sample_xts_files['multi_0'].parent
+        
+        xts_alias.add_alias('bulk', str(multi_dir), recursive=False)
+        
+        captured = capsys.readouterr()
+        
+        # Should show success message with count
+        assert "Added 3" in captured.out or "✓" in captured.out
+    
+    @patch('builtins.input', return_value='y')
+    def test_add_directory_generates_unique_names(self, mock_input, temp_xts_dir, tmp_path):
+        """Test unique alias names generated from filenames."""
+        # Create directory with identically named files in subdirs
+        test_dir = tmp_path / "test"
+        test_dir.mkdir()
+        (test_dir / "config.xts").write_text("commands: {}")
+        
+        dir1 = test_dir / "dir1"
+        dir1.mkdir()
+        (dir1 / "config.xts").write_text("commands: {}")
+        
+        dir2 = test_dir / "dir2"  
+        dir2.mkdir()
+        (dir2 / "config.xts").write_text("commands: {}")
+        
+        xts_alias.add_alias('test', str(test_dir), recursive=True)
+        
+        aliases = xts_alias.list_aliases()
+        
+        # All files should be added with unique names
+        # Should have 3 files (config.xts in test/, dir1/, dir2/)
+        assert len(aliases) == 3
+        
+        # Check that at least 2 got renamed (since they have duplicate names)
+        alias_names = list(aliases.keys())
+        config_aliases = [n for n in alias_names if 'config' in n]
+        assert len(config_aliases) == 3
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
