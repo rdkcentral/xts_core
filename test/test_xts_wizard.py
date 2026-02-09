@@ -174,7 +174,7 @@ class TestInteractivePrompts:
         assert result == 'test_command'
     
     @patch('builtins.input', return_value='echo "Hello"')
-    def test_prompt_command(self, mock_input):
+    def test_prompt_command(self, mock_input, tmp_path):
         """Test prompting for command string."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -183,7 +183,7 @@ class TestInteractivePrompts:
         assert result == 'echo "Hello"'
     
     @patch('builtins.input', return_value='This is a test command')
-    def test_prompt_description(self, mock_input):
+    def test_prompt_description(self, mock_input, tmp_path):
         """Test prompting for description."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -192,7 +192,7 @@ class TestInteractivePrompts:
         assert result == 'This is a test command'
     
     @patch('builtins.input', side_effect=['arg1', 'Argument 1', 'y', 'n'])
-    def test_prompt_arguments(self, mock_input):
+    def test_prompt_arguments(self, mock_input, tmp_path):
         """Test prompting for command arguments."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -245,8 +245,8 @@ class TestCreateWorkflow:
         
         # Write to file (simulate what create() does)
         config_data = {
-            'description': wizard.state.description,
-            'commands': wizard.state.commands
+            'description': wizard.state.config.get('description'),
+            'commands': wizard.state.config.get('commands', {})
         }
         
         with open(output_file, 'w') as f:
@@ -263,7 +263,7 @@ class TestCreateWorkflow:
         assert 'test_cmd' in config['commands']
     
     @patch('builtins.input', side_effect=['', '', 'q'])
-    def test_create_user_quit(self, mock_input):
+    def test_create_user_quit(self, mock_input, tmp_path):
         """Test user quitting create workflow."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -279,7 +279,7 @@ class TestEditWorkflow:
     
     def test_edit_existing_file(self, temp_wizard_dir):
         """Test editing existing .xts file."""
-        filepath = str(tmp_path / "test.xts")
+        filepath = str(temp_wizard_dir / "test.xts")
         wizard = XTSWizard(filepath)
         
         # Create existing config
@@ -301,13 +301,12 @@ class TestEditWorkflow:
         with open(existing_file, 'r') as f:
             loaded_config = yaml.safe_load(f)
         
-        wizard.state = WizardState()
-        wizard.state.description = loaded_config.get('description')
-        wizard.state.commands = loaded_config.get('commands', {})
+        wizard.state = WizardState(str(existing_file))
+        wizard.state.config = loaded_config
         
         # Verify loaded
-        assert wizard.state.description == 'Existing config'
-        assert 'old_cmd' in wizard.state.commands
+        assert wizard.state.config.get('description') == 'Existing config'
+        assert 'old_cmd' in wizard.state.config.get('commands', {})
     
     def test_edit_missing_file(self, temp_wizard_dir):
         """Test editing non-existent file."""
@@ -320,7 +319,7 @@ class TestEditWorkflow:
 class TestSignalHandling:
     """Test CTRL-C signal handling."""
     
-    def test_signal_handler_exists(self):
+    def test_signal_handler_exists(self, tmp_path):
         """Test wizard can handle signals."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -331,7 +330,7 @@ class TestSignalHandling:
         assert wizard is not None
     
     @patch('signal.signal')
-    def test_setup_signal_handler(self, mock_signal):
+    def test_setup_signal_handler(self, mock_signal, tmp_path):
         """Test signal handler setup."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
@@ -348,7 +347,7 @@ class TestValidationIntegration:
         """Test wizard validates config before saving."""
         from xts_core.xts_validator import XTSValidator
         
-        filepath = str(tmp_path / "test.xts")
+        filepath = str(temp_wizard_dir / "test.xts")
         wizard = XTSWizard(filepath)
         validator = XTSValidator()
         
@@ -406,21 +405,29 @@ class TestResumeWorkflow:
     
     def test_resume_from_saved_state(self, temp_wizard_dir, sample_wizard_state):
         """Test resuming wizard from saved state."""
-        filepath = str(tmp_path / "test.xts")
+        filepath = str(temp_wizard_dir / "test.xts")
         wizard = XTSWizard(filepath)
-        state_file = temp_wizard_dir / ".xts-wizard-state"
+        state_file = f"{filepath}.xts-wizard-state"
+        
+        # Create state data matching WizardState structure
+        state_data = {
+            'config': sample_wizard_state,
+            'current_step': 'commands',
+            'filepath': filepath
+        }
         
         # Save state
         with open(state_file, 'w') as f:
-            json.dump(sample_wizard_state, f)
+            json.dump(state_data, f)
         
         # Load state
-        loaded_state = WizardState.load(str(state_file))
+        state = WizardState(filepath)
+        loaded = state.load()
         
         # Verify loaded correctly
-        assert loaded_state.output_file == sample_wizard_state['output_file']
-        assert loaded_state.description == sample_wizard_state['description']
-        assert 'test_cmd' in loaded_state.commands
+        assert loaded is True
+        assert state.filepath == filepath
+        assert 'test_cmd' in state.config.get('commands', {})
     
     @patch('builtins.input', return_value='y')
     def test_resume_prompt(self, mock_input, temp_wizard_dir):
@@ -447,37 +454,39 @@ class TestFunctionDefinitions:
     """Test creating function definitions in wizard."""
     
     @patch('builtins.input', side_effect=['format_output', 'echo "Formatted: {{input}}"', 'n'])
-    def test_add_function(self, mock_input):
+    def test_add_function(self, mock_input, tmp_path):
         """Test adding function definition."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
+        wizard.state = WizardState(filepath)
         
         # Simulate adding function
         func_name = mock_input("Enter function name: ")
         func_command = mock_input("Enter function command: ")
         add_more = mock_input("Add another function? (y/n): ")
         
-        # Add to state
-        wizard.state.functions[func_name] = {
+        # Add to state config
+        if 'functions' not in wizard.state.config:
+            wizard.state.config['functions'] = {}
+        wizard.state.config['functions'][func_name] = {
             'command': func_command
         }
         
-        assert 'format_output' in wizard.state.functions
-        assert wizard.state.functions['format_output']['command'] == 'echo "Formatted: {{input}}"'
+        assert 'format_output' in wizard.state.config['functions']
+        assert wizard.state.config['functions']['format_output']['command'] == 'echo "Formatted: {{input}}"'
     
     def test_function_in_config(self, temp_wizard_dir):
         """Test function appears in saved config."""
-        filepath = str(tmp_path / "test.xts")
+        filepath = str(temp_wizard_dir / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
-        wizard.state.description = 'Config with function'
-        wizard.state.functions = {
+        wizard.state = WizardState(filepath)
+        wizard.state.config['description'] = 'Config with function'
+        wizard.state.config['functions'] = {
             'my_func': {
                 'command': 'echo "{{value}}"'
             }
         }
-        wizard.state.commands = {
+        wizard.state.config['commands'] = {
             'use_func': {
                 'description': 'Uses function',
                 'command': 'echo "Result"',
@@ -487,11 +496,7 @@ class TestFunctionDefinitions:
         
         # Save to file
         output_file = temp_wizard_dir / "with_func.xts"
-        config_data = {
-            'description': wizard.state.description,
-            'functions': wizard.state.functions,
-            'commands': wizard.state.commands
-        }
+        config_data = wizard.state.config
         
         with open(output_file, 'w') as f:
             yaml.dump(config_data, f)
@@ -508,45 +513,47 @@ class TestEnvironmentAndOptions:
     """Test environment variables and other options."""
     
     @patch('builtins.input', side_effect=['TEST_VAR', 'test_value', 'n'])
-    def test_add_environment_variables(self, mock_input):
+    def test_add_environment_variables(self, mock_input, tmp_path):
         """Test adding environment variables."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
+        wizard.state = WizardState(filepath)
         
         # Simulate adding env var
         var_name = mock_input("Enter variable name: ")
         var_value = mock_input("Enter variable value: ")
         add_more = mock_input("Add another variable? (y/n): ")
         
-        wizard.state.environment[var_name] = var_value
+        if 'environment' not in wizard.state.config:
+            wizard.state.config['environment'] = {}
+        wizard.state.config['environment'][var_name] = var_value
         
-        assert 'TEST_VAR' in wizard.state.environment
-        assert wizard.state.environment['TEST_VAR'] == 'test_value'
+        assert 'TEST_VAR' in wizard.state.config['environment']
+        assert wizard.state.config['environment']['TEST_VAR'] == 'test_value'
     
     @patch('builtins.input', return_value='/tmp/workdir')
-    def test_set_working_directory(self, mock_input):
+    def test_set_working_directory(self, mock_input, tmp_path):
         """Test setting working directory."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
+        wizard.state = WizardState(filepath)
         
         workdir = mock_input("Enter working directory: ")
-        wizard.state.working_directory = workdir
+        wizard.state.config['working_directory'] = workdir
         
-        assert wizard.state.working_directory == '/tmp/workdir'
+        assert wizard.state.config.get('working_directory') == '/tmp/workdir'
     
     @patch('builtins.input', return_value='300')
-    def test_set_timeout(self, mock_input):
+    def test_set_timeout(self, mock_input, tmp_path):
         """Test setting timeout value."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
+        wizard.state = WizardState(filepath)
         
         timeout = mock_input("Enter timeout (seconds): ")
-        wizard.state.timeout = int(timeout)
+        wizard.state.config['timeout'] = int(timeout)
         
-        assert wizard.state.timeout == 300
+        assert wizard.state.config.get('timeout') == 300
 
 
 class TestErrorHandling:
@@ -554,20 +561,20 @@ class TestErrorHandling:
     
     def test_invalid_yaml_generation(self, temp_wizard_dir):
         """Test handling of invalid YAML generation."""
-        filepath = str(tmp_path / "test.xts")
+        filepath = str(temp_wizard_dir / "test.xts")
         wizard = XTSWizard(filepath)
-        wizard.state = WizardState()
+        wizard.state = WizardState(filepath)
         
         # Try to create config with problematic data
         # (In real scenario, wizard should prevent this)
-        wizard.state.description = 'Test'
-        wizard.state.commands = {}  # No commands
+        wizard.state.config['description'] = 'Test'
+        wizard.state.config['commands'] = {}  # No commands
         
         # Empty commands is valid, just unusual
-        assert isinstance(wizard.state.commands, dict)
+        assert isinstance(wizard.state.config.get('commands', {}), dict)
     
     @patch('builtins.input', side_effect=KeyboardInterrupt())
-    def test_keyboard_interrupt_handling(self, mock_input):
+    def test_keyboard_interrupt_handling(self, mock_input, tmp_path):
         """Test handling keyboard interrupt (CTRL-C)."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
