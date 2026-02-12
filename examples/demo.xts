@@ -1,0 +1,645 @@
+#****************************************************************************
+# *
+# * If not stated otherwise in this file or this component's LICENSE file
+# * the following copyright and licenses apply:
+# *
+# * Copyright 2026 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *
+# * http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *
+#****************************************************************************
+
+# XTS Core - Comprehensive Feature Demonstration
+# ==============================================
+# Self-contained demo showcasing XTS capabilities: commands, workflows,
+# creation tools, and best practices.
+
+brief: "Comprehensive XTS demonstration - features, workflows, creation tools, and GitHub integration"
+schema_version: "1.0"
+version: "2.0.0"
+
+changelog:
+  - version: "2.0.0"
+    date: "2026-02-09"
+    changes:
+      - "Complete demo redesign with self-contained examples"
+      - "Added project creation and workflow demonstrations"
+      - "GitHub integration showcase with clone/build/test/run"
+      - "Rich colored output with consistent formatting"
+      - "Best practices and tips for XTS development"
+    author: "RDK Management"
+
+functions:
+  banner:
+    description: Display colorful section banner
+    command: |
+      python3 -c "
+      import sys
+      title = ' '.join(sys.argv[1:])
+      width = 72
+      print()
+      print('\033[96m' + '═' * width + '\033[0m')
+      print('\033[1m\033[96m' + title.center(width) + '\033[0m')
+      print('\033[96m' + '═' * width + '\033[0m')
+      print()
+      " "$@"
+
+intro:
+  description: Introduction to XTS capabilities and features
+  command: |
+    echo ""
+    echo "\033[1m\033[96m╔════════════════════════════════════════════════════════════════════╗\033[0m"
+    echo "\033[1m\033[96m║              XTS - Command eXecution Testing System                ║\033[0m"
+    echo "\033[1m\033[96m║              Transform YAML into Powerful CLI Tools                ║\033[0m"
+    echo "\033[1m\033[96m╚════════════════════════════════════════════════════════════════════╝\033[0m"
+    echo ""
+    echo "\033[1m🎯 What is XTS?\033[0m"
+    echo "XTS transforms simple YAML files into rich, self-documenting CLI tools."
+    echo "No coding required - just describe your commands and XTS handles the rest!"
+    echo ""
+    echo "\033[1m\033[92m✨ Key Features:\033[0m"
+    echo "  \033[96m•\033[0m \033[1mPortable\033[0m      - Single .xts file contains everything"
+    echo "  \033[96m•\033[0m \033[1mDiscoverable\033[0m - Built-in help + tab completion"
+    echo "  \033[96m•\033[0m \033[1mFlexible\033[0m     - Mix bash, python, curl, jq, anything"
+    echo "  \033[96m•\033[0m \033[1mVersioned\033[0m    - Schema versioning for compatibility"
+    echo "  \033[96m•\033[0m \033[1mRich Output\033[0m  - Colored, formatted, beautiful results"
+    echo "  \033[96m•\033[0m \033[1mGitHub Ready\033[0m - Install directly from repositories"
+    echo ""
+    echo "\033[1m\033[95m🚀 Quick Commands:\033[0m"
+    echo "  \033[2mxts demo features\033[0m       # See XTS feature showcase"
+    echo "  \033[2mxts demo create\033[0m         # Learn to create .xts files"
+    echo "  \033[2mxts demo workflow\033[0m       # Project workflow example"
+    echo "  \033[2mxts demo github\033[0m         # GitHub integration demo"
+    echo "  \033[2mxts demo tips\033[0m           # Pro tips and best practices"
+    echo ""
+    echo "\033[2m────────────────────────────────────────────────────────────────────\033[0m"
+    echo "\033[1mGet Started:\033[0m xts wizard create  \033[2m# Interactive .xts file creator\033[0m"
+    echo ""
+
+features:
+  description: Showcase XTS features - colors, commands, functions, passthrough, nesting
+  
+  colors:
+    description: Rich colored output demonstration
+    command: |
+      echo ""
+      echo "\033[1m\033[96m🎨 XTS Colored Output\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mText Styles:\033[0m"
+      echo "  \033[1mBold\033[0m, \033[2mDim\033[0m, \033[4mUnderline\033[0m, \033[7mReverse\033[0m"
+      echo ""
+      echo "\033[1mColors:\033[0m"
+      echo "  \033[91m●\033[0m \033[91mRed\033[0m - errors    \033[92m●\033[0m \033[92mGreen\033[0m - success"
+      echo "  \033[93m●\033[0m \033[93mYellow\033[0m - warnings  \033[94m●\033[0m \033[94mBlue\033[0m - info"
+      echo "  \033[95m●\033[0m \033[95mMagenta\033[0m - special  \033[96m●\033[0m \033[96mCyan\033[0m - commands"
+      echo ""
+      echo "\033[1mStatus Icons:\033[0m"
+      echo "  \033[92m✓\033[0m Success  \033[91m✗\033[0m Failed  \033[93m⚠\033[0m Warning  \033[96m→\033[0m Progress"
+      echo ""
+      echo "\033[1mFormatted Table:\033[0m"
+      echo "  \033[1m\033[96m#   Name           Status      Value\033[0m"
+      echo "  \033[2m────────────────────────────────────────\033[0m"
+      echo "  \033[96m1\033[0m   Production     \033[92mONLINE\033[0m      12345"
+      echo "  \033[96m2\033[0m   Staging        \033[93mDEGRADED\033[0m     8723"
+      echo "  \033[96m3\033[0m   Development    \033[91mOFFLINE\033[0m        0"
+      echo ""
+      echo "\033[2m💡 All colors use ANSI escape codes - universal support!\033[0m"
+      echo ""
+  
+  commands:
+    description: Command structure and organization
+    command: |
+      echo ""
+      echo "\033[1m\033[95m📝 XTS Command Structure\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mSimple Command:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      echo "\033[96mhello:\033[0m"
+      echo "\033[96m  description: Say hello\033[0m"
+      echo "\033[96m  command: echo \"Hello World!\"\033[0m"
+      echo ""
+      echo "\033[1mWith Parameters:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      echo "\033[96mgreet:\033[0m"
+      echo "\033[96m  command: echo \"Hello \$1!\"\033[0m"
+      echo "\033[96m  params:\033[0m"
+      echo "\033[96m    passthrough: true\033[0m"
+      echo ""
+      echo "\033[1mSequential Commands:\033[0m"
+      echo "\033[2m────────────────────────\033[0m"
+      echo "\033[96msetup:\033[0m"
+      echo "\033[96m  command:\033[0m"
+      echo "\033[96m    - echo \"Step 1...\"\033[0m"
+      echo "\033[96m    - echo \"Step 2...\"\033[0m"
+      echo "\033[96m    - echo \"Complete!\"\033[0m"
+      echo ""
+      echo "\033[2m💡 Commands execute in order with full bash support\033[0m"
+      echo ""
+  
+  functions:
+    description: Reusable formatter functions
+    command: |
+      BB='{{'
+      echo ""
+      echo "\033[1m\033[94m⚙️  XTS Functions\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mWhat are Functions?\033[0m"
+      echo "Reusable formatters defined once, used everywhere in your .xts file."
+      echo ""
+      echo "\033[1mDefine a Function:\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "\033[96mfunctions:\033[0m"
+      echo "\033[96m  format_json:\033[0m"
+      echo "\033[96m    command: |\033[0m"
+      echo "\033[96m      jq -C .\033[0m"
+      echo ""
+      echo "\033[1mUse in Commands:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      echo "\033[96mget_users:\033[0m"
+      echo "\033[96m  command: curl api/users | ${BB}format_json}}\033[0m"
+      echo ""
+      echo "\033[1m\033[92m✓ Benefits:\033[0m"
+      echo "  • Consistent formatting"
+      echo "  • Easy maintenance"
+      echo "  • Code reuse"
+      echo ""
+      echo "\033[2m💡 The ${BB}function_name}} syntax calls your function\033[0m"
+      echo ""
+  
+  passthrough:
+    description: Parameter passthrough demonstration
+    command: |
+      echo ""
+      echo "\033[1m\033[93m📨 Parameter Passthrough\033[0m"
+      echo "\033[93m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      if [ $# -eq 0 ]; then
+        echo "\033[1mNo arguments provided\033[0m"
+        echo ""
+        echo "\033[1mTry:\033[0m xts demo features passthrough arg1 arg2 arg3"
+        echo ""
+        echo "\033[1mConfiguration:\033[0m"
+        echo "\033[2m──────────────────\033[0m"
+        echo "\033[96mmy_command:\033[0m"
+        echo "\033[96m  command: echo \"\$@\"\033[0m"
+        echo "\033[96m  params:\033[0m"
+        echo "\033[96m    passthrough: true\033[0m"
+        echo ""
+      else
+        echo "\033[1mYour arguments:\033[0m"
+        count=1
+        for arg in "$@"; do
+          echo "  \033[96m$count.\033[0m $arg"
+          count=$((count + 1))
+        done
+        echo ""
+        echo "\033[92m✓ All arguments after command name are passed through!\033[0m"
+        echo ""
+      fi
+    params:
+      passthrough: true
+  
+  nesting:
+    description: Nested command hierarchies
+    level1:
+      description: First level
+      command: echo "\033[96m→\033[0m Level 1"
+      level2:
+        description: Second level
+        command: echo "\033[96m→→\033[0m Level 2"
+        level3:
+          description: Third level (deep nesting example)
+          command: |
+            echo ""
+            echo "\033[96m→→→\033[0m Level 3 - Deep nesting!"
+            echo ""
+            echo "\033[1mCommand path:\033[0m"
+            echo "  xts demo features nesting level1"
+            echo "  xts demo features nesting level1 level2"
+            echo "  xts demo features nesting level1 level2 level3"
+            echo ""
+            echo "\033[2m💡 Organize complex tools with hierarchical commands\033[0m"
+            echo ""
+
+create:
+  description: Learn to create .xts files - wizard, manual, template, structure
+  
+  wizard:
+    description: Interactive .xts file creation
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🪄 XTS Wizard - Interactive Creation\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mThe easiest way to create .xts files:\033[0m"
+      echo ""
+      echo "  \033[96m$\033[0m xts wizard create"
+      echo ""
+      echo "\033[1mThe wizard will ask you:\033[0m"
+      echo "  \033[92m1.\033[0m Project name and description"
+      echo "  \033[92m2.\033[0m Commands to include"
+      echo "  \033[92m3.\033[0m Whether to add functions"
+      echo "  \033[92m4.\033[0m Version and changelog info"
+      echo ""
+      echo "\033[1mThen generates a complete .xts file ready to use!\033[0m"
+      echo ""
+      echo "\033[93m💡 Try it now:\033[0m"
+      echo "  cd /tmp && xts wizard create"
+      echo ""
+  
+  manual:
+    description: Manual .xts file creation
+    command: |
+      echo ""
+      echo "\033[1m\033[94m📖 Manual .xts File Creation\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mMinimal .xts file structure:\033[0m"
+      echo ""
+      echo "\033[2m# myproject.xts\033[0m"
+      echo "\033[96mbrief: \"My awesome project commands\"\033[0m"
+      echo "\033[96mschema_version: \"1.0\"\033[0m"
+      echo "\033[96mversion: \"1.0.0\"\033[0m"
+      echo ""
+      echo "\033[96mhello:\033[0m"
+      echo "\033[96m  description: Say hello\033[0m"
+      echo "\033[96m  command: echo \"Hello!\"\033[0m"
+      echo ""
+      echo "\033[96mgreet:\033[0m"
+      echo "\033[96m  description: Greet someone\033[0m"
+      echo "\033[96m  command: echo \"Hello \$1!\"\033[0m"
+      echo "\033[96m  params:\033[0m"
+      echo "\033[96m    passthrough: true\033[0m"
+      echo ""
+      echo "\033[1mThen use it:\033[0m"
+      echo "  xts alias add myproject myproject.xts"
+      echo "  xts myproject hello"
+      echo "  xts myproject greet World"
+      echo ""
+      echo "\033[2m💡 See 'xts demo create template' for a full example\033[0m"
+      echo ""
+  
+  template:
+    description: Complete .xts file template
+    command: |
+      echo ""
+      echo "# Example Template .xts File"
+      echo ""
+      echo "brief: \"Brief one-line description of your project (max 120 chars)\""
+      echo "schema_version: \"1.0\""
+      echo "version: \"1.0.0\""
+      echo ""
+      echo "changelog:"
+      echo "  - version: \"1.0.0\""
+      echo "    date: \"2026-02-09\""
+      echo "    changes:"
+      echo "      - \"Initial release\""
+      echo "      - \"Added core commands\""
+      echo "    author: \"Your Name\""
+      echo ""
+      echo "functions:"
+      echo "  format_output:"
+      echo "    description: Format JSON output"
+      echo "    command: jq -C ."
+      echo ""
+      echo "hello:"
+      echo "  description: Say hello"
+      echo "  command: echo \"Hello from XTS!\""
+      echo ""
+      echo "greet:"
+      echo "  description: Greet someone by name"
+      echo "  command: |"
+      echo "    if [ \$# -eq 0 ]; then"
+      echo "      echo \"Usage: xts myproject greet <name>\""
+      echo "      exit 1"
+      echo "    fi"
+      echo "    echo \"Hello, \$1! Welcome to XTS.\""
+      echo "  params:"
+      echo "    passthrough: true"
+      echo ""
+      echo "status:"
+      echo "  description: Show project status"
+      echo "  command: |"
+      echo "    echo \"Project Status\""
+      echo "    echo \"Version: 1.0.0\""
+      echo "    echo \"Status: ✓ Ready\""
+      echo ""
+  
+  structure:
+    description: File structure and organization
+    command: |
+      echo ""
+      echo "\033[1m\033[92m📁 .xts File Structure\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mRequired Fields:\033[0m"
+      echo "  \033[96mschema_version\033[0m  - XTS schema version (currently \"1.0\")"
+      echo ""
+      echo "\033[1mRecommended Fields:\033[0m"
+      echo "  \033[96mbrief\033[0m           - One-line summary (shown in listings)"
+      echo "  \033[96mversion\033[0m         - Your project version (semver)"
+      echo "  \033[96mchangelog\033[0m       - Version history"
+      echo ""
+      echo "\033[1mOptional Sections:\033[0m"
+      echo "  \033[96mfunctions\033[0m       - Reusable formatter functions"
+      echo ""
+      echo "\033[1mCommand Sections:\033[0m"
+      echo "  Everything else defines your commands!"
+      echo ""
+      echo "\033[1mBest Practices:\033[0m"
+      echo "  \033[92m✓\033[0m Use meaningful command names"
+      echo "  \033[92m✓\033[0m Add descriptions to all commands"
+      echo "  \033[92m✓\033[0m Group related commands with nesting"
+      echo "  \033[92m✓\033[0m Use functions for common formatters"
+      echo "  \033[92m✓\033[0m Include usage examples in descriptions"
+      echo ""
+      echo "\033[2m💡 See 'xts demo create template' for a complete example\033[0m"
+      echo ""
+
+workflow:
+  description: Project workflow example - build, test, run, deploy lifecycle
+  
+  setup:
+    description: Initialize project environment
+    command:
+      - echo ""
+      - echo "\033[1m\033[96m→ Setting up project...\033[0m"
+      - echo "  Creating directories..."
+      - mkdir -p /tmp/xts_demo_project/{src,tests,dist}
+      - echo "  \033[92m✓\033[0m Directories created"
+      - echo "  Creating sample files..."
+      - echo "print('Hello from demo project!')" > /tmp/xts_demo_project/src/main.py
+      - echo "def test_example():" > /tmp/xts_demo_project/tests/test_main.py
+      - echo "    assert True" >> /tmp/xts_demo_project/tests/test_main.py
+      - echo "  \033[92m✓\033[0m Files created"
+      - echo ""
+      - echo "\033[92m✓ Project setup complete!\033[0m"
+      - 'echo "\033[2m  Location: /tmp/xts_demo_project/\033[0m"'
+      - echo ""
+  
+  build:
+    description: Build the project
+    command: |
+      echo ""
+      echo "\033[1m\033[96m→ Building project...\033[0m"
+      if [ ! -d /tmp/xts_demo_project ]; then
+        echo "\033[93m⚠  Project not found. Run: xts demo workflow setup\033[0m"
+        echo ""
+        exit 1
+      fi
+      echo "  Checking source files..."
+      sleep 0.5
+      echo "  \033[92m✓\033[0m Source files OK"
+      echo "  Compiling..."
+      sleep 0.5
+      echo "  \033[92m✓\033[0m Build successful"
+      echo ""
+      echo "\033[92m✓ Build complete!\033[0m"
+      echo ""
+  
+  test:
+    description: Run project tests
+    command: |
+      echo ""
+      echo "\033[1m\033[96m→ Running tests...\033[0m"
+      if [ ! -d /tmp/xts_demo_project ]; then
+        echo "\033[93m⚠  Project not found. Run: xts demo workflow setup\033[0m"
+        echo ""
+        exit 1
+      fi
+      echo ""
+      echo "  \033[96mtest_example\033[0m ...................... \033[92mPASSED\033[0m"
+      echo "  \033[96mtest_integration\033[0m ................. \033[92mPASSED\033[0m"
+      echo "  \033[96mtest_performance\033[0m ................. \033[92mPASSED\033[0m"
+      echo ""
+      echo "\033[92m✓ All tests passed!\033[0m \033[2m(3/3)\033[0m"
+      echo ""
+  
+  run:
+    description: Run the project
+    command: |
+      echo ""
+      echo "\033[1m\033[96m→ Running project...\033[0m"
+      if [ ! -f /tmp/xts_demo_project/src/main.py ]; then
+        echo "\033[93m⚠  Project not found. Run: xts demo workflow setup\033[0m"
+        echo ""
+        exit 1
+      fi
+      echo ""
+      python3 /tmp/xts_demo_project/src/main.py
+      echo ""
+      echo "\033[92m✓ Execution complete!\033[0m"
+      echo ""
+  
+  deploy:
+    description: Deploy the project
+    command: |
+      echo ""
+      echo "\033[1m\033[96m→ Deploying project...\033[0m"
+      if [ ! -d /tmp/xts_demo_project ]; then
+        echo "\033[93m⚠  Project not found. Run: xts demo workflow setup\033[0m"
+        echo ""
+        exit 1
+      fi
+      echo "  Packaging application..."
+      sleep 0.5
+      echo "  \033[92m✓\033[0m Package created"
+      echo "  Uploading to server..."
+      sleep 0.5
+      echo "  \033[92m✓\033[0m Upload successful"
+      echo "  Restarting services..."
+      sleep 0.5
+      echo "  \033[92m✓\033[0m Services restarted"
+      echo ""
+      echo "\033[92m✓ Deployment complete!\033[0m"
+      echo ""
+  
+  cleanup:
+    description: Clean up project files
+    command: |
+      echo ""
+      echo "\033[1m\033[96m→ Cleaning up...\033[0m"
+      rm -rf /tmp/xts_demo_project
+      echo "  \033[92m✓\033[0m Project files removed"
+      echo ""
+      echo "\033[92m✓ Cleanup complete!\033[0m"
+      echo ""
+  
+  full:
+    description: |
+      Run complete workflow
+      
+      Executes setup → build → test → run → deploy → cleanup sequence
+    command:
+      - xts demo workflow setup
+      - xts demo workflow build
+      - xts demo workflow test
+      - xts demo workflow run
+      - xts demo workflow deploy
+      - xts demo workflow cleanup
+      - echo "\033[1m\033[92m✨ Complete workflow executed successfully!\033[0m"
+      - echo ""
+
+github:
+  description: GitHub integration - install .xts files from repositories
+  
+  intro:
+    description: GitHub integration overview
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🐙 GitHub Integration\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mInstall .xts files directly from GitHub!\033[0m"
+      echo ""
+      echo "\033[1mSupported URL formats:\033[0m"
+      echo "  • https://github.com/owner/repo"
+      echo "  • https://github.com/owner/repo/tree/main/examples"
+      echo "  • https://github.com/owner/repo.git"
+      echo ""
+      echo "\033[1mHow it works:\033[0m"
+      echo "  \033[96m1.\033[0m XTS scans the repository for .xts files"
+      echo "  \033[96m2.\033[0m Shows files with their brief descriptions"
+      echo "  \033[96m3.\033[0m You select which files to install"
+      echo "  \033[96m4.\033[0m Files are cached locally for offline use"
+      echo ""
+      echo "\033[1mExample:\033[0m"
+      echo "  \033[2m$\033[0m xts alias add https://github.com/rdkcentral/xts_core"
+      echo ""
+      echo "  \033[2mFound 3 .xts file(s):\033[0m"
+      echo "  \033[2m  #  Name        Brief\033[0m"
+      echo "  \033[2m  ───────────────────────────────────────────────────\033[0m"
+      echo "  \033[2m  1  demo        Comprehensive XTS demonstration...\033[0m"
+      echo "  \033[2m  2  manual      XTS manual and documentation\033[0m"
+      echo "  \033[2m  3  template    Starter template for new projects\033[0m"
+      echo ""
+      echo "  \033[2mEnter number(s): 1,2\033[0m"
+      echo ""
+      echo "\033[93m💡 Try it:\033[0m xts demo github example"
+      echo ""
+  
+  example:
+    description: Simulate GitHub installation
+    command: |
+      echo ""
+      echo "\033[1m\033[95m→ GitHub Installation Demo\033[0m"
+      echo ""
+      echo "\033[2mSimulating:\033[0m xts alias add https://github.com/rdkcentral/xts_core"
+      echo ""
+      sleep 1
+      echo "Searching GitHub repository: \033[96mrdkcentral/xts_core\033[0m"
+      echo ""
+      sleep 1
+      echo "Found \033[1m3\033[0m .xts file(s):"
+      echo ""
+      echo "\033[1m  #  Name                Brief\033[0m"
+      echo "  " && echo "─" | awk '{for(i=1;i<=70;i++) printf "─"}'
+      echo ""
+      echo "  \033[96m1\033[0m  demo                Comprehensive XTS demonstration..."
+      echo "  \033[96m2\033[0m  manual              XTS manual and documentation"
+      echo "  \033[96m3\033[0m  template            Starter template for new projects"
+      echo ""
+      echo "\033[2m(This is a simulation - no actual download performed)\033[0m"
+      echo ""
+      echo "\033[1mTo actually install from GitHub:\033[0m"
+      echo "  xts alias add <github-url>"
+      echo ""
+
+tips:
+  description: Pro tips and best practices for XTS development
+  command: |
+    echo ""
+    echo "\033[1m\033[96m💎 XTS Pro Tips & Best Practices\033[0m"
+    echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+    echo "\033[1m1. Always Add Brief Descriptions\033[0m"
+    echo "   Makes your .xts files discoverable in GitHub listings"
+    echo "   \033[96mbrief: \"Your one-line description here\"\033[0m"
+    echo ""
+    echo "\033[1m2. Use Schema Versioning\033[0m"
+    echo "   Include schema_version for forward compatibility"
+    echo "   \033[96mschema_version: \"1.0\"\033[0m"
+    echo ""
+    echo "\033[1m3. Document with Rich Help Text\033[0m"
+    echo "   Add detailed descriptions with usage examples"
+    echo "   Use \\033[1m formatting for emphasis in descriptions"
+    echo ""
+    echo "\033[1m4. Organize with Nesting\033[0m"
+    echo "   Group related commands hierarchically"
+    echo "   Example: build → build test, build prod"
+    echo ""
+    echo "\033[1m5. Leverage Functions\033[0m"
+    echo "   Define formatters once, reuse everywhere"
+    echo "   Keeps commands clean and maintainable"
+    echo ""
+    echo "\033[1m6. Use Environment Variables\033[0m"
+    echo "   \${VAR:-default} provides flexibility"
+    echo "   Users can override without modifying .xts file"
+    echo ""
+    echo "\033[1m7. Error Handling\033[0m"
+    echo "   Check preconditions, provide helpful messages"
+    echo "   Use exit codes: 0=success, 1=error"
+    echo ""
+    echo "\033[1m8. Test Your Commands\033[0m"
+    echo "   Validate all workflows before distributing"
+    echo "   Test with different argument combinations"
+    echo ""
+    echo "\033[1m9. Version Your Files\033[0m"
+    echo "   Use semver: version: \"1.2.3\""
+    echo "   Maintain changelog for transparency"
+    echo ""
+    echo "\033[1m10. Share on GitHub\033[0m"
+    echo "   Push .xts files to public repositories"
+    echo "   Others can install with one command!"
+    echo ""
+    echo "\033[2m────────────────────────────────────────────────────────────────────\033[0m"
+    echo "\033[1m🚀 Ready to create? Run:\033[0m xts wizard create"
+    echo ""
+
+about:
+  description: About XTS Core - project information and links
+  command: |
+    echo ""
+    echo "\033[1m\033[96m╔════════════════════════════════════════════════════════════════════╗\033[0m"
+    echo "\033[1m\033[96m║              XTS - Command eXecution Testing System                ║\033[0m"
+    echo "\033[1m\033[96m╚════════════════════════════════════════════════════════════════════╝\033[0m"
+    echo ""
+    echo "\033[1mProject:\033[0m XTS Core"
+    echo "\033[1mVersion:\033[0m 2.0.0"
+    echo "\033[1mLicense:\033[0m Apache 2.0"
+    echo "\033[1mMaintainer:\033[0m RDK Management"
+    echo ""
+    echo "\033[1mWhat is XTS?\033[0m"
+    echo "A powerful framework for creating self-documenting CLI tools from"
+    echo "simple YAML configuration files. No coding required!"
+    echo ""
+    echo "\033[1m\033[92mFeatures:\033[0m"
+    echo "  ✓ Single file portability"
+    echo "  ✓ Built-in help and tab completion"
+    echo "  ✓ Rich colored output"
+    echo "  ✓ Reusable functions"
+    echo "  ✓ GitHub integration"
+    echo "  ✓ Schema versioning"
+    echo ""
+    echo "\033[1m\033[96mResources:\033[0m"
+    echo "  • Repository: https://github.com/rdkcentral/xts_core"
+    echo "  • Docs: See README.md and examples/"
+    echo "  • Manual: xts manual (if installed)"
+    echo ""
+    echo "\033[2m────────────────────────────────────────────────────────────────────\033[0m"
+    echo "\033[1mGet Started:\033[0m xts wizard create"
+    echo ""

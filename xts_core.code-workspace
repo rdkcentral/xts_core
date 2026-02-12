@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../yaml_runner"
+		}
+	],
+	"settings": {}
+}

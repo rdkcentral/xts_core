@@ -1,0 +1,1760 @@
+#****************************************************************************
+# *
+# * If not stated otherwise in this file or this component's LICENSE file
+# * the following copyright and licenses apply:
+# *
+# * Copyright 2026 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *
+# * http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *
+#****************************************************************************
+
+# XTS Manual - Complete Documentation
+# ====================================
+# Comprehensive guide to XTS features, usage, and best practices
+
+brief: "Complete XTS manual - installation, GitHub integration, creation, and best practices"
+schema_version: "1.0"
+version: "2.0.0"
+
+functions:
+  format_json:
+    description: Pretty-print JSON output
+    command: jq -C .
+  format_table:
+    description: Format output as a table
+    command: column -t -s ','
+  highlight_errors:
+    description: Highlight error lines in red
+    command: grep --color=always -E 'ERROR|error|$'
+  extract_ips:
+    description: Extract IP addresses from input
+    command: grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+'
+  function_name:
+    description: Example placeholder function
+    command: cat
+  func1:
+    description: Example pipeline function 1
+    command: sort
+  func2:
+    description: Example pipeline function 2
+    command: uniq -c
+
+changelog:
+  - version: "2.0.0"
+    date: "2026-02-09"
+    changes:
+      - "Complete manual redesign with comprehensive sections"
+      - "Added GitHub and HTTP installation guides"
+      - "Schema documentation and best practices"
+      - "Troubleshooting and FAQ sections"
+    author: "RDK Management"
+
+intro:
+  description: |
+    \033[1mXTS Manual Introduction\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual intro
+    
+    Overview of XTS capabilities
+  command: |
+    echo ""
+    echo "\033[1m\033[96m╔════════════════════════════════════════════════════════════════════╗\033[0m"
+    echo "\033[1m\033[96m║               XTS Manual - Complete Documentation                  ║\033[0m"
+    echo "\033[1m\033[96m╚════════════════════════════════════════════════════════════════════╝\033[0m"
+    echo ""
+    echo "\033[1mWhat is XTS?\033[0m"
+    echo "XTS (Command eXecution Testing System) transforms YAML files into powerful,"
+    echo "self-documenting CLI tools. Perfect for test automation, DevOps workflows,"
+    echo "and building shareable command collections."
+    echo ""
+    echo "\033[1m\033[92mManual Sections:\033[0m"
+    echo "  \033[96m→\033[0m xts manual install       \033[2m# Installation and setup\033[0m"
+    echo "  \033[96m→\033[0m xts manual github        \033[2m# GitHub integration guide\033[0m"
+    echo "  \033[96m→\033[0m xts manual create        \033[2m# Creating .xts files\033[0m"
+    echo "  \033[96m→\033[0m xts manual schema        \033[2m# Schema reference\033[0m"
+    echo "  \033[96m→\033[0m xts manual commands      \033[2m# Command configuration\033[0m"
+    echo "  \033[96m→\033[0m xts manual functions     \033[2m# Reusable functions\033[0m"
+    echo "  \033[96m→\033[0m xts manual completion    \033[2m# Tab completion setup\033[0m"
+    echo "  \033[96m→\033[0m xts manual troubleshoot  \033[2m# Common issues and fixes\033[0m"
+    echo "  \033[96m→\033[0m xts manual faq           \033[2m# Frequently asked questions\033[0m"
+    echo ""
+    echo "\033[1m🚀 Quick Start:\033[0m"
+    echo "  xts wizard create   \033[2m# Interactive .xts file creator\033[0m"
+    echo "  xts demo intro      \033[2m# See XTS in action\033[0m"
+    echo ""
+
+install:
+  description: |
+    \033[1mInstallation and Setup\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual install <topic>
+    
+    Topics: xts, alias, http, github, verify
+  
+  xts:
+    description: Install XTS Core
+    command: |
+      echo ""
+      echo "\033[1m\033[96m📦 Installing XTS Core\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mFrom Source (Development):\033[0m"
+      echo "\033[2m──────────────────────────────\033[0m"
+      echo "  git clone https://github.com/rdkcentral/xts_core.git"
+      echo "  cd xts_core"
+      echo "  pip install -e ."
+      echo ""
+      echo "\033[1mFrom PyPI (Stable):\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      echo "  pip install xts-core"
+      echo ""
+      echo "\033[1mVerify Installation:\033[0m"
+      echo "\033[2m───────────────────\033[0m"
+      echo "  xts --version"
+      echo "  xts --help"
+      echo ""
+      echo "\033[1mEnable Tab Completion:\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo "  source /path/to/xts-completion.bash"
+      echo "  \033[2m# Add to ~/.bashrc for persistence\033[0m"
+      echo ""
+      echo "\033[92m✓ See 'xts manual completion' for detailed setup\033[0m"
+      echo ""
+  
+  alias:
+    description: Understanding aliases
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🏷️  XTS Aliases\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mWhat is an Alias?\033[0m"
+      echo "An alias is a shortcut name for a .xts file. Once registered, you can"
+      echo "run commands like: \033[96mxts <alias> <command>\033[0m"
+      echo ""
+      echo "\033[1mAlias Commands:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      echo "  \033[96mxts alias list\033[0m              # Show installed aliases"
+      echo "  \033[96mxts alias add <name> <path>\033[0m # Add from local file"
+      echo "  \033[96mxts alias add <url>\033[0m         # Add from GitHub/HTTP"
+      echo "  \033[96mxts alias remove <name>\033[0m     # Remove alias"
+      echo "  \033[96mxts alias refresh <name>\033[0m    # Update cached version"
+      echo "  \033[96mxts alias clean\033[0m             # Remove all aliases"
+      echo ""
+      echo "\033[1mExample:\033[0m"
+      echo "  xts alias add mytools ~/projects/mytools.xts"
+      echo "  xts mytools hello"
+      echo ""
+      echo "\033[93m💡 Aliases are cached locally for offline use\033[0m"
+      echo ""
+  
+  http:
+    description: HTTP URL installation
+    command: |
+      echo ""
+      echo "\033[1m\033[94m🌐 HTTP URL Installation\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mInstall .xts files directly from HTTP/HTTPS URLs:\033[0m"
+      echo ""
+      echo "\033[1mSyntax:\033[0m"
+      echo "  xts alias add <alias_name> <url>"
+      echo ""
+      echo "\033[1mExamples:\033[0m"
+      echo "\033[2m─────────\033[0m"
+      echo "  # From direct URL"
+      echo "  xts alias add myproject https://example.com/myproject.xts"
+      echo ""
+      echo "  # From raw GitHub URL"
+      echo "  xts alias add demo https://raw.githubusercontent.com/rdkcentral/xts_core/main/examples/demo.xts"
+      echo ""
+      echo "  # From corporate intranet"
+      echo "  xts alias add tools http://internal.company.com/tools.xts"
+      echo ""
+      echo "\033[1mHow it works:\033[0m"
+      echo "  \033[96m1.\033[0m XTS downloads the .xts file"
+      echo "  \033[96m2.\033[0m Validates YAML structure"
+      echo "  \033[96m3.\033[0m Caches locally for offline use"
+      echo "  \033[96m4.\033[0m Alias is ready to use!"
+      echo ""
+      echo "\033[1mUpdate cached version:\033[0m"
+      echo "  xts alias refresh myproject"
+      echo ""
+      echo "\033[93m💡 Prefer GitHub URLs for interactive file selection\033[0m"
+      echo "\033[93m💡 See 'xts manual github' for GitHub repository support\033[0m"
+      echo ""
+  
+  github:
+    description: GitHub repository installation
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🐙 GitHub Repository Installation\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mInstall from GitHub repositories with interactive selection:\033[0m"
+      echo ""
+      echo "\033[1mSupported URL Formats:\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "  • https://github.com/owner/repo"
+      echo "  • https://github.com/owner/repo.git"
+      echo "  • https://github.com/owner/repo/tree/branch/path"
+      echo "  • git@github.com:owner/repo.git"
+      echo ""
+      echo "\033[1mBasic Usage:\033[0m"
+      echo "  xts alias add https://github.com/rdkcentral/xts_core"
+      echo ""
+      echo "\033[1mWhat happens:\033[0m"
+      echo "  \033[96m1.\033[0m XTS scans repository for .xts files"
+      echo "  \033[96m2.\033[0m Displays list with brief descriptions"
+      echo "  \033[96m3.\033[0m You select files to install (by number)"
+      echo "  \033[96m4.\033[0m Files cached locally with aliases created"
+      echo ""
+      echo "\033[1mExample Session:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      echo "  \$ xts alias add https://github.com/rdkcentral/xts_core"
+      echo ""
+      echo "  Searching GitHub repository: rdkcentral/xts_core"
+      echo "  "
+      echo "  Found 3 .xts file(s):"
+      echo "    #  Name        Brief"
+      echo "    ───────────────────────────────────────────────────────"
+      echo "    1  demo        Comprehensive XTS demonstration..."
+      echo "    2  manual      Complete XTS manual and documentation"
+      echo "    3  template    Starter template for new projects"
+      echo "  "
+      echo "  Enter number(s) to install (comma-separated, or 'all'): 1,2"
+      echo "  "
+      echo "  ✓ Installed: demo"
+      echo "  ✓ Installed: manual"
+      echo ""
+      echo "\033[1mAdvanced:\033[0m"
+      echo "  # Install from specific branch"
+      echo "  xts alias add https://github.com/user/repo/tree/develop/examples"
+      echo ""
+      echo "  # Install from private repo (requires auth)"
+      echo "  export GITHUB_TOKEN=ghp_your_token_here"
+      echo "  xts alias add https://github.com/private/repo"
+      echo ""
+      echo "\033[93m💡 Brief field in .xts files improves discoverability\033[0m"
+      echo "\033[93m💡 See 'xts manual create' to learn about brief field\033[0m"
+      echo ""
+  
+  verify:
+    description: Verify installation
+    command: |
+      echo ""
+      echo "\033[1m\033[92m✓ Verify Installation\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mCheck XTS version:\033[0m"
+      echo "  \033[96m$\033[0m xts --version"
+      if command -v xts &>/dev/null; then
+        echo "  \033[92m✓\033[0m $(xts --version 2>&1 | head -1)"
+      else
+        echo "  \033[91m✗\033[0m XTS not found in PATH"
+      fi
+      echo ""
+      echo "\033[1mList installed aliases:\033[0m"
+      echo "  \033[96m$\033[0m xts alias list"
+      echo ""
+      echo "\033[1mTest tab completion:\033[0m"
+      echo "  \033[96m$\033[0m xts <TAB><TAB>"
+      echo "  \033[2m# Should show: alias, demo, manual, ...\033[0m"
+      echo ""
+      echo "\033[1mRun demo:\033[0m"
+      echo "  \033[96m$\033[0m xts demo intro"
+      echo ""
+      echo "\033[93m💡 If tab completion doesn't work, see 'xts manual completion'\033[0m"
+      echo ""
+
+github:
+  description: |
+    \033[1mGitHub Integration Guide\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual github <topic>
+    
+    Topics: overview, usage, brief, auth, troubleshoot
+  
+  overview:
+    description: GitHub features overview
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🐙 GitHub Integration Overview\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mFeatures:\033[0m"
+      echo "  \033[92m✓\033[0m Automatic .xts file discovery in repositories"
+      echo "  \033[92m✓\033[0m Interactive file selection with brief descriptions"
+      echo "  \033[92m✓\033[0m Support for branches and subdirectories"
+      echo "  \033[92m✓\033[0m Private repository support (with token)"
+      echo "  \033[92m✓\033[0m Local caching for offline use"
+      echo ""
+      echo "\033[1mBenefits:\033[0m"
+      echo "  • Share .xts files with your team instantly"
+      echo "  • Version control your command collections"
+      echo "  • Discover community-contributed tools"
+      echo "  • One-command installation"
+      echo ""
+      echo "\033[1mQuick Example:\033[0m"
+      echo "  xts alias add https://github.com/rdkcentral/xts_core"
+      echo ""
+      echo "\033[2m💡 See 'xts manual github usage' for detailed examples\033[0m"
+      echo ""
+  
+  usage:
+    description: GitHub usage examples
+    command: |
+      echo ""
+      echo "\033[1m\033[94m📖 GitHub Usage Examples\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1m1. Install from Repository Root:\033[0m"
+      echo "   xts alias add https://github.com/user/project"
+      echo "   \033[2m# Scans entire repo for .xts files\033[0m"
+      echo ""
+      echo "\033[1m2. Install from Subdirectory:\033[0m"
+      echo "   xts alias add https://github.com/user/project/tree/main/examples"
+      echo "   \033[2m# Only scans examples/ directory\033[0m"
+      echo ""
+      echo "\033[1m3. Install from Specific Branch:\033[0m"
+      echo "   xts alias add https://github.com/user/project/tree/develop"
+      echo "   \033[2m# Use develop branch instead of main\033[0m"
+      echo ""
+      echo "\033[1m4. Install Specific File:\033[0m"
+      echo "   xts alias add mytools https://raw.githubusercontent.com/.../file.xts"
+      echo "   \033[2m# Direct URL to single file\033[0m"
+      echo ""
+      echo "\033[1m5. Interactive Selection:\033[0m"
+      echo "   xts alias add https://github.com/rdkcentral/xts_core"
+      echo "   \033[2m# Prompts you to select files\033[0m"
+      echo "   Enter number(s): 1,3   \033[2m# Install files #1 and #3\033[0m"
+      echo "   Enter number(s): all   \033[2m# Install all files\033[0m"
+      echo ""
+      echo "\033[1m6. Update Cached Files:\033[0m"
+      echo "   xts alias refresh demo"
+      echo "   \033[2m# Re-download latest version from GitHub\033[0m"
+      echo ""
+      echo "\033[93m💡 Brief descriptions help you choose the right files\033[0m"
+      echo ""
+  
+  brief:
+    description: Using brief field for discovery
+    command: |
+      echo ""
+      echo "\033[1m\033[96m💬 Brief Field - Making Files Discoverable\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mWhat is 'brief'?\033[0m"
+      echo "A one-line description shown when browsing GitHub repositories."
+      echo "Helps users understand what your .xts file provides."
+      echo ""
+      echo "\033[1mExample in .xts file:\033[0m"
+      echo "\033[2m─────────────────────\033[0m"
+      echo "\033[96mbrief: \"API testing tools for REST endpoints\"\033[0m"
+      echo "\033[96mschema_version: \"1.0\"\033[0m"
+      echo "\033[96mversion: \"1.0.0\"\033[0m"
+      echo ""
+      echo "\033[1mHow it appears:\033[0m"
+      echo "\033[2m───────────────\033[0m"
+      echo "  Found 3 .xts file(s):"
+      echo "    #  Name        Brief"
+      echo "    ───────────────────────────────────────────────────────"
+      echo "    1  api_tools   \033[92mAPI testing tools for REST endpoints\033[0m"
+      echo "    2  db_tools    Database management and migration tools"
+      echo "    3  deploy      Automated deployment workflows"
+      echo ""
+      echo "\033[1mBest Practices:\033[0m"
+      echo "  \033[92m✓\033[0m Keep under 120 characters"
+      echo "  \033[92m✓\033[0m Be specific and descriptive"
+      echo "  \033[92m✓\033[0m Mention key features or use case"
+      echo "  \033[92m✓\033[0m Avoid generic phrases like \"useful tools\""
+      echo ""
+      echo "\033[1mGood Examples:\033[0m"
+      echo "  • \"Kubernetes deployment automation with health checks\""
+      echo "  • \"AWS S3 bucket management and sync utilities\""
+      echo "  • \"PostgreSQL backup, restore, and migration tools\""
+      echo ""
+      echo "\033[1mPoor Examples:\033[0m"
+      echo "  • \"Some commands\" \033[2m(too vague)\033[0m"
+      echo "  • \"\" \033[2m(empty - not shown in listing)\033[0m"
+      echo ""
+      echo "\033[93m💡 Always include 'brief' for GitHub-hosted .xts files!\033[0m"
+      echo ""
+  
+  auth:
+    description: Private repository authentication
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🔐 Private Repository Authentication\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mAccess private repositories with GitHub Personal Access Token:\033[0m"
+      echo ""
+      echo "\033[1mStep 1: Create Token\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "  1. Go to GitHub Settings → Developer settings → Personal access tokens"
+      echo "  2. Click 'Generate new token (classic)'"
+      echo "  3. Select scopes: \033[96mrepo\033[0m (Full control of private repositories)"
+      echo "  4. Generate and copy token"
+      echo ""
+      echo "\033[1mStep 2: Set Environment Variable\033[0m"
+      echo "\033[2m───────────────────────────────────\033[0m"
+      echo "  export GITHUB_TOKEN=ghp_your_token_here"
+      echo ""
+      echo "  \033[2m# Add to ~/.bashrc for persistence:\033[0m"
+      echo "  echo 'export GITHUB_TOKEN=ghp_your_token' >> ~/.bashrc"
+      echo ""
+      echo "\033[1mStep 3: Install from Private Repo\033[0m"
+      echo "\033[2m──────────────────────────────────\033[0m"
+      echo "  xts alias add https://github.com/myorg/private-repo"
+      echo ""
+      echo "\033[1mSecurity Notes:\033[0m"
+      echo "  \033[93m⚠\033[0m  Never commit tokens to source control"
+      echo "  \033[93m⚠\033[0m  Use tokens with minimum required permissions"
+      echo "  \033[93m⚠\033[0m  Revoke tokens when no longer needed"
+      echo "  \033[93m⚠\033[0m  Consider using SSH keys for automation"
+      echo ""
+      echo "\033[2m💡 Public repositories don't require authentication\033[0m"
+      echo ""
+  
+  troubleshoot:
+    description: GitHub troubleshooting
+    command: |
+      echo ""
+      echo "\033[1m\033[93m🔧 GitHub Troubleshooting\033[0m"
+      echo "\033[93m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mProblem: \"No .xts files found\"\033[0m"
+      echo "\033[2m──────────────────────────────────\033[0m"
+      echo "  • Verify repository contains .xts files"
+      echo "  • Check if files are in subdirectory"
+      echo "  • Try: xts alias add <url>/tree/main/<subdir>"
+      echo ""
+      echo "\033[1mProblem: \"API rate limit exceeded\"\033[0m"
+      echo "\033[2m────────────────────────────────────\033[0m"
+      echo "  • GitHub limits: 60 requests/hour (unauthenticated)"
+      echo "  • Solution: Set GITHUB_TOKEN for 5000 requests/hour"
+      echo "  • See: xts manual github auth"
+      echo ""
+      echo "\033[1mProblem: \"Permission denied\"\033[0m"
+      echo "\033[2m──────────────────────────────────\033[0m"
+      echo "  • Repository may be private"
+      echo "  • Set GITHUB_TOKEN with repo scope"
+      echo "  • Verify token has access to repository"
+      echo ""
+      echo "\033[1mProblem: \"Invalid YAML\"\033[0m"
+      echo "\033[2m────────────────────────────\033[0m"
+      echo "  • Downloaded .xts file may be corrupted"
+      echo "  • Check file format on GitHub"
+      echo "  • Verify YAML syntax at yaml-online-parser.appspot.com"
+      echo ""
+      echo "\033[1mProblem: \"Alias already exists\"\033[0m"
+      echo "\033[2m────────────────────────────────────\033[0m"
+      echo "  • Choose different alias name"
+      echo "  • Or remove existing: xts alias remove <name>"
+      echo "  • Or refresh: xts alias refresh <name>"
+      echo ""
+      echo "\033[93m💡 For more help, see 'xts manual troubleshoot'\033[0m"
+      echo ""
+
+create:
+  description: |
+    \033[1mCreating .xts Files\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual create <topic>
+    
+    Topics: wizard, manual, structure, examples
+  
+  wizard:
+    description: Using the wizard
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🪄 XTS Wizard - Easiest Way to Create\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mInteractive creation process:\033[0m"
+      echo ""
+      echo "  \033[96m$\033[0m xts wizard create"
+      echo ""
+      echo "\033[1mWizard will guide you through:\033[0m"
+      echo "  \033[96m1.\033[0m Project name and brief description"
+      echo "  \033[96m2.\033[0m Version and author information"
+      echo "  \033[96m3.\033[0m Command definitions"
+      echo "  \033[96m4.\033[0m Function definitions (optional)"
+      echo "  \033[96m5.\033[0m Output file location"
+      echo ""
+      echo "\033[1mOutput:\033[0m"
+      echo "  • Complete .xts file with proper structure"
+      echo "  • Schema version and metadata"
+      echo "  • Ready to use immediately"
+      echo ""
+      echo "\033[1mExample Session:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      echo "  Project name: mytools"
+      echo "  Brief: Utility commands for daily tasks"
+      echo "  Version: 1.0.0"
+      echo "  Author: John Doe"
+      echo "  "
+      echo "  Add command? (y/n): y"
+      echo "  Command name: backup"
+      echo "  Description: Backup important files"
+      echo "  Command: rsync -av ~/docs /backup/"
+      echo "  "
+      echo "  ✓ Created: mytools.xts"
+      echo ""
+      echo "\033[93m💡 Best for beginners or quick prototypes\033[0m"
+      echo ""
+  
+  manual:
+    description: Manual creation guide
+    command: |
+      echo ""
+      echo "\033[1m\033[94m📝 Manual .xts File Creation\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mMinimal Structure:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      cat << 'EOF'
+
+      # File: myproject.xts
+      brief: "Project description"
+      schema_version: "1.0"
+      version: "1.0.0"
+
+      hello:
+        description: Say hello
+        command: echo "Hello!"
+
+      EOF
+      echo ""
+      echo "\033[1mFull Structure with All Features:\033[0m"
+      echo "\033[2m──────────────────────────────────────\033[0m"
+      cat << 'EOF'
+
+      # File: advanced.xts
+      brief: "Advanced project with all features"
+      schema_version: "1.0"
+      version: "2.0.0"
+
+      changelog:
+        - version: "2.0.0"
+          date: "2026-02-09"
+          changes:
+            - "Added new commands"
+            - "Improved performance"
+          author: "John Doe"
+
+      functions:
+        format_json:
+          description: Pretty-print JSON
+          command: jq -C .
+
+      api:
+        description: API commands
+
+        get:
+          description: GET request
+          command: |
+            curl -s "$1" | {{format_json}}
+          params:
+            passthrough: true
+
+        post:
+          description: POST request
+          command: |
+            curl -s -X POST -H "Content-Type: application/json" \
+                 -d "$2" "$1" | {{format_json}}
+          params:
+            passthrough: true
+
+      EOF
+      echo ""
+      echo "\033[93m💡 See 'xts manual schema' for complete field reference\033[0m"
+      echo ""
+  
+  structure:
+    description: File structure reference
+    command: |
+      echo ""
+      echo "\033[1m\033[96m📋 .xts File Structure Reference\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mTop Level (Metadata):\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "  \033[96mbrief\033[0m            - One-line description (optional, recommended)"
+      echo "  \033[96mschema_version\033[0m   - XTS schema version (required: \"1.0\")"
+      echo "  \033[96mversion\033[0m          - Project version (optional, semver)"
+      echo "  \033[96mchangelog\033[0m        - Version history (optional array)"
+      echo ""
+      echo "\033[1mFunctions Section (Optional):\033[0m"
+      echo "\033[2m──────────────────────────────\033[0m"
+      echo "  \033[96mfunctions:\033[0m"
+      echo "    \033[96mfunction_name:\033[0m"
+      echo "      \033[96mdescription:\033[0m ...  \033[2m# What it does\033[0m"
+      echo "      \033[96mcommand:\033[0m ...      \033[2m# Formatter code\033[0m"
+      echo ""
+      echo "\033[1mCommand Sections:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      echo "  \033[96mcommand_name:\033[0m"
+      echo "    \033[96mdescription:\033[0m ...  \033[2m# Help text\033[0m"
+      echo "    \033[96mcommand:\033[0m ...      \033[2m# Shell command(s)\033[0m"
+      echo "    \033[96mparams:\033[0m           \033[2m# Optional\033[0m"
+      echo "      \033[96mpassthrough: true\033[0m  \033[2m# Accept arguments\033[0m"
+      echo ""
+      echo "\033[1mNested Commands:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      echo "  \033[96mparent:\033[0m"
+      echo "    \033[96mdescription:\033[0m ..."
+      echo "    \033[96mchild:\033[0m"
+      echo "      \033[96mdescription:\033[0m ..."
+      echo "      \033[96mcommand:\033[0m ..."
+      echo ""
+      echo "\033[93m💡 Only 'schema_version' is required. Everything else is optional!\033[0m"
+      echo ""
+  
+  examples:
+    description: Complete examples
+    command: |
+      echo ""
+      echo "\033[1m\033[92m📚 Complete .xts Examples\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mExample 1: Simple Utilities\033[0m"
+      echo "\033[2m───────────────────────────\033[0m"
+      cat << 'EOF'
+
+      brief: "Daily utility commands"
+      schema_version: "1.0"
+
+      backup:
+        description: Backup home directory
+        command: rsync -av ~/Documents /backup/
+
+      cleanup:
+        description: Clean temporary files
+        command: |
+          rm -rf /tmp/*
+          echo "✓ Cleanup complete"
+
+      status:
+        description: System status
+        command: |
+          echo "Disk: $(df -h / | awk 'NR==2 {print $5}')"
+          echo "RAM:  $(free -h | awk 'NR==2 {print $3"/"$2}')"
+
+      EOF
+      echo ""
+      echo "\033[1mExample 2: API Testing\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      cat << 'EOF'
+
+      brief: "REST API testing utilities"
+      schema_version: "1.0"
+
+      functions:
+        format_json:
+          command: jq -C .
+
+      api:
+        get:
+          description: GET request
+          command: curl -s "$1" | {{format_json}}
+          params:
+            passthrough: true
+
+        post:
+          description: POST request with JSON body
+          command: |
+            curl -s -X POST \
+              -H "Content-Type: application/json" \
+              -d "$2" "$1" | {{format_json}}
+          params:
+            passthrough: true
+
+      EOF
+      echo ""
+      echo "\033[93m💡 More examples: xts demo features\033[0m"
+      echo ""
+
+schema:
+  description: |
+    \033[1mSchema Reference\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual schema <topic>
+    
+    Topics: overview, fields, version, validation
+  
+  overview:
+    description: Schema overview
+    command: |
+      echo ""
+      echo "\033[1m\033[96m📐 XTS Schema Overview\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mWhat is the Schema?\033[0m"
+      echo "The XTS schema defines the structure and rules for .xts files."
+      echo "Version 1.0 is the current stable schema."
+      echo ""
+      echo "\033[1mPurpose:\033[0m"
+      echo "  • Ensures compatibility across XTS versions"
+      echo "  • Validates .xts file structure"
+      echo "  • Enables future enhancements"
+      echo ""
+      echo "\033[1mCurrent Schema Version: 1.0\033[0m"
+      echo ""
+      echo "\033[1mRequired in every .xts file:\033[0m"
+      echo "  \033[96mschema_version: \"1.0\"\033[0m"
+      echo ""
+      echo "\033[1mBackward Compatibility:\033[0m"
+      echo "  • XTS 2.x supports schema 1.0 files"
+      echo "  • Future schemas will maintain compatibility"
+      echo "  • Deprecations announced with migration path"
+      echo ""
+      echo "\033[93m💡 Always specify schema_version for future-proofing\033[0m"
+      echo ""
+  
+  fields:
+    description: Field reference
+    command: |
+      echo ""
+      echo "\033[1m\033[94m📖 Schema Field Reference\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mTop-Level Fields:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      echo ""
+      echo "\033[96mschema_version\033[0m (required)"
+      echo "  Type: string"
+      echo "  Value: \"1.0\""
+      echo "  Purpose: Schema compatibility marker"
+      echo ""
+      echo "\033[96mbrief\033[0m (optional, recommended)"
+      echo "  Type: string"
+      echo "  Length: ≤120 characters"
+      echo "  Purpose: One-line description for listings"
+      echo "  Example: \"API testing utilities for REST endpoints\""
+      echo ""
+      echo "\033[96mversion\033[0m (optional)"
+      echo "  Type: string"
+      echo "  Format: Semantic versioning (semver)"
+      echo "  Example: \"2.1.0\""
+      echo ""
+      echo "\033[96mchangelog\033[0m (optional)"
+      echo "  Type: array of objects"
+      echo "  Fields: version, date, changes (array), author"
+      echo "  Example:"
+      echo "    changelog:"
+      echo "      - version: \"2.0.0\""
+      echo "        date: \"2026-02-09\""
+      echo "        changes:"
+      echo "          - \"Added new feature\""
+      echo "        author: \"John Doe\""
+      echo ""
+      echo "\033[96mfunctions\033[0m (optional)"
+      echo "  Type: object"
+      echo "  Purpose: Reusable formatter definitions"
+      echo "  Fields: description, command"
+      echo ""
+      echo "\033[1mCommand Fields:\033[0m"
+      echo "\033[2m───────────────\033[0m"
+      echo ""
+      echo "\033[96mdescription\033[0m (optional, recommended)"
+      echo "  Type: string"
+      echo "  Purpose: Help text shown with --help"
+      echo "  Supports: Multi-line YAML (|)"
+      echo ""
+      echo "\033[96mcommand\033[0m (required for terminal commands)"
+      echo "  Type: string or array"
+      echo "  Purpose: Shell command(s) to execute"
+      echo "  String: Single command"
+      echo "  Array: Multiple commands (sequential)"
+      echo ""
+      echo "\033[96mparams\033[0m (optional)"
+      echo "  Type: object"
+      echo "  Fields:"
+      echo "    passthrough: true  # Accept arguments"
+      echo ""
+      echo "\033[93m💡 Nested commands omit 'command' field - they're just groups\033[0m"
+      echo ""
+  
+  version:
+    description: Version management
+    command: |
+      echo ""
+      echo "\033[1m\033[95m🏷️  Version Management\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mSemantic Versioning (Recommended):\033[0m"
+      echo ""
+      echo "  \033[96mversion: \"MAJOR.MINOR.PATCH\"\033[0m"
+      echo ""
+      echo "  \033[1mMAJOR\033[0m - Breaking changes (2.0.0 → 3.0.0)"
+      echo "  \033[1mMINOR\033[0m - New features, backward compatible (2.0.0 → 2.1.0)"
+      echo "  \033[1mPATCH\033[0m - Bug fixes, backward compatible (2.0.0 → 2.0.1)"
+      echo ""
+      echo "\033[1mChangelog Best Practices:\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo ""
+      cat << 'EOF'
+      changelog:
+        - version: "2.0.0"
+          date: "2026-02-09"
+          changes:
+            - "Breaking: Renamed 'deploy' to 'release'"
+            - "Added rollback command"
+            - "Fixed timeout issue in health check"
+          author: "John Doe"
+
+        - version: "1.5.0"
+          date: "2026-01-15"
+          changes:
+            - "Added new monitoring commands"
+            - "Improved error messages"
+          author: "Jane Smith"
+
+      EOF
+      echo ""
+      echo "\033[1mWhen to Increment:\033[0m"
+      echo "  \033[92m→\033[0m Major: Command rename/removal, parameter changes"
+      echo "  \033[92m→\033[0m Minor: New commands, new features"
+      echo "  \033[92m→\033[0m Patch: Bug fixes, doc updates, performance"
+      echo ""
+      echo "\033[93m💡 Keep changelog up-to-date for user confidence\033[0m"
+      echo ""
+  
+  validation:
+    description: Schema validation
+    command: |
+      echo ""
+      echo "\033[1m\033[92m✓ Schema Validation\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mAutomatic Validation:\033[0m"
+      echo "XTS validates .xts files when you:"
+      echo "  • Add alias: xts alias add mytools mytools.xts"
+      echo "  • Run command: xts mytools hello"
+      echo ""
+      echo "\033[1mCommon Validation Errors:\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo ""
+      echo "\033[91m✗\033[0m Missing schema_version"
+      echo "  Fix: Add 'schema_version: \"1.0\"' to top of file"
+      echo ""
+      echo "\033[91m✗\033[0m Invalid YAML syntax"
+      echo "  Fix: Check indentation (use spaces, not tabs)"
+      echo "       Validate at yaml-online-parser.appspot.com"
+      echo ""
+      echo "\033[91m✗\033[0m Command with no 'command' field"
+      echo "  Fix: Add 'command: <your shell command>'"
+      echo "       OR make it a nested command group"
+      echo ""
+      echo "\033[91m✗\033[0m Brief exceeds 120 characters"
+      echo "  Fix: Shorten brief description"
+      echo ""
+      echo "\033[1mManual Validation:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      echo "  # Test your .xts file"
+      echo "  xts alias add test_alias myfile.xts"
+      echo "  xts test_alias --help"
+      echo ""
+      echo "\033[93m💡 Validation happens automatically - you'll see clear errors\033[0m"
+      echo ""
+
+cmds:
+  description: |
+    \033[1mCommand Configuration\033[0m
+
+    \033[1mUsage:\033[0m  xts manual cmds <topic>
+
+    Topics: basic, multi, params, nesting, tips
+  
+  basic:
+    description: Basic command structure
+    command: |
+      echo ""
+      echo "\033[1m\033[96m⚡ Basic Command Structure\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mSimplest Command:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      cat << 'EOF'
+
+      hello:
+        command: echo "Hello, World!"
+
+      EOF
+      echo ""
+      echo "\033[1mWith Description:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      cat << 'EOF'
+
+      hello:
+        description: Display a friendly greeting
+        command: echo "Hello, World!"
+
+      EOF
+      echo ""
+      echo "\033[1mMulti-line Command:\033[0m"
+      echo "\033[2m───────────────────\033[0m"
+      cat << 'EOF'
+
+      status:
+        description: System status check
+        command: |
+          echo "Checking system..."
+          uptime
+          df -h /
+          free -h
+
+      EOF
+      echo ""
+      echo "\033[1mUsing Environment Variables:\033[0m"
+      echo "\033[2m────────────────────────────────\033[0m"
+      cat << 'EOF'
+
+      deploy:
+        description: Deploy to specified environment
+        command: |
+          ENV=${1:-production}
+          echo "Deploying to $ENV..."
+          ./deploy.sh $ENV
+
+      EOF
+      echo ""
+      echo "\033[93m💡 Use | for multi-line, |+ to preserve final newlines\033[0m"
+      echo ""
+  
+  multi:
+    description: Multiple sequential commands
+    command: |
+      echo ""
+      echo "\033[1m\033[94m🔗 Sequential Commands\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mArray of Commands:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      cat << 'EOF'
+
+      setup:
+        description: Initialize project
+        command:
+          - echo "Creating directories..."
+          - mkdir -p build dist
+          - echo "Installing dependencies..."
+          - npm install
+          - echo "Setup complete!"
+
+      EOF
+      echo ""
+      echo "\033[1mHow It Works:\033[0m"
+      echo "  • Each command runs in sequence"
+      echo "  • Execution stops if any command fails"
+      echo "  • Same as: cmd1 && cmd2 && cmd3"
+      echo ""
+      echo "\033[1mWith Multiline Commands:\033[0m"
+      echo "\033[2m─────────────────────────\033[0m"
+      cat << 'EOF'
+
+      full_deploy:
+        description: Complete deployment workflow
+        command:
+          - |
+            echo "Step 1: Building..."
+            npm run build
+          - |
+            echo "Step 2: Testing..."
+            npm test
+          - |
+            echo "Step 3: Deploying..."
+            ./deploy.sh production
+          - echo "✓ Deployment complete!"
+
+      EOF
+      echo ""
+      echo "\033[93m💡 Use arrays for clear step-by-step workflows\033[0m"
+      echo ""
+  
+  params:
+    description: Parameter handling
+    command: |
+      echo ""
+      echo "\033[1m\033[95m📨 Parameter Handling\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mEnable Passthrough:\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      cat << 'EOF'
+
+      greet:
+        description: Greet someone by name
+        command: echo "Hello, $1!"
+        params:
+          passthrough: true
+
+      # Usage: xts myproject greet Alice
+      # Output: Hello, Alice!
+
+      EOF
+      echo ""
+      echo "\033[1mMultiple Parameters:\033[0m"
+      echo "\033[2m────────────────────\033[0m"
+      cat << 'EOF'
+
+      add:
+        description: Add two numbers
+        command: echo "$(($1 + $2))"
+        params:
+          passthrough: true
+
+      # Usage: xts myproject add 5 10
+      # Output: 15
+
+      EOF
+      echo ""
+      echo "\033[1mAll Parameters (\$@):\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      cat << 'EOF'
+
+      run:
+        description: Run command with all arguments
+        command: |
+          echo "Running with args: $@"
+          ./myprogram "$@"
+        params:
+          passthrough: true
+
+      # Usage: xts myproject run --verbose --output=file.txt
+      # Passes: --verbose --output=file.txt to ./myprogram
+
+      EOF
+      echo ""
+      echo "\033[1mOptional Parameters with Defaults:\033[0m"
+      echo "\033[2m───────────────────────────────────\033[0m"
+      cat << 'EOF'
+
+      deploy:
+        description: Deploy to environment
+        command: |
+          ENV=${1:-staging}
+          echo "Deploying to $ENV"
+        params:
+          passthrough: true
+
+      # Usage: xts myproject deploy          → staging
+      #        xts myproject deploy production → production
+
+      EOF
+      echo ""
+      echo "\033[93m💡 Always add passthrough: true to accept arguments\033[0m"
+      echo ""
+  
+  nesting:
+    description: Nested command hierarchies
+    command: |
+      echo ""
+      echo "\033[1m\033[92m🌳 Nested Command Hierarchies\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mBasic Nesting:\033[0m"
+      echo "\033[2m──────────────\033[0m"
+      cat << 'EOF'
+
+      db:
+        description: Database operations
+
+        backup:
+          description: Backup database
+          command: pg_dump mydb > backup.sql
+
+        restore:
+          description: Restore database
+          command: psql mydb < backup.sql
+
+      # Usage:
+      #   xts myproject db backup
+      #   xts myproject db restore
+
+      EOF
+      echo ""
+      echo "\033[1mMulti-Level Nesting:\033[0m"
+      echo "\033[2m────────────────────\033[0m"
+      cat << 'EOF'
+
+      aws:
+        description: AWS operations
+
+        s3:
+          description: S3 bucket operations
+
+          list:
+            description: List buckets
+            command: aws s3 ls
+
+          sync:
+            description: Sync to bucket
+            command: aws s3 sync . s3://mybucket/
+
+        ec2:
+          description: EC2 instance operations
+
+          list:
+            description: List instances
+            command: aws ec2 describe-instances
+
+      # Usage:
+      #   xts myproject aws s3 list
+      #   xts myproject aws s3 sync
+      #   xts myproject aws ec2 list
+
+      EOF
+      echo ""
+      echo "\033[1mBenefits:\033[0m"
+      echo "  • Logical grouping of related commands"
+      echo "  • Clear command hierarchy"
+      echo "  • Better tab completion"
+      echo "  • Easier to maintain"
+      echo ""
+      echo "\033[93m💡 Use nesting to organize complex tools\033[0m"
+      echo ""
+  
+  tips:
+    description: Command best practices
+    command: |
+      echo ""
+      echo "\033[1m\033[96m💡 Command Best Practices\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1m1. Always Add Descriptions\033[0m"
+      echo "   Help users understand what command does"
+      echo "   Shown with xts <alias> <command> --help"
+      echo ""
+      echo "\033[1m2. Use Meaningful Names\033[0m"
+      echo "   \033[92m✓\033[0m deploy_production, backup_database"
+      echo "   \033[91m✗\033[0m dp, bkdb"
+      echo ""
+      echo "\033[1m3. Provide Usage Examples\033[0m"
+      echo "   Include in description:"
+      echo "   description: |"
+      echo "     Deploy application"
+      echo "     Usage: xts myapp deploy <environment>"
+      echo "     Example: xts myapp deploy production"
+      echo ""
+      echo "\033[1m4. Handle Errors Gracefully\033[0m"
+      echo "   command: |"
+      echo "     if [ -z \"\$1\" ]; then"
+      echo "       echo \"Error: Missing argument\""
+      echo "       exit 1"
+      echo "     fi"
+      echo ""
+      echo "\033[1m5. Show Progress\033[0m"
+      echo "   command: |"
+      echo "     echo \"Building...\""
+      echo "     npm run build"
+      echo "     echo \"✓ Build complete\""
+      echo ""
+      echo "\033[1m6. Use Colors for Output\033[0m"
+      echo "   echo \"\033[92m✓ Success\033[0m\""
+      echo "   echo \"\033[91m✗ Failed\033[0m\""
+      echo "   echo \"\033[93m⚠ Warning\033[0m\""
+      echo ""
+      echo "\033[1m7. Validate Prerequisites\033[0m"
+      echo "   command: |"
+      echo "     if ! command -v docker &>/dev/null; then"
+      echo "       echo \"Error: Docker not found\""
+      echo "       exit 1"
+      echo "     fi"
+      echo ""
+      echo "\033[93m💡 Good command design makes tools intuitive and reliable\033[0m"
+      echo ""
+
+func:
+  description: |
+    \033[1mReusable Functions\033[0m
+
+    \033[1mUsage:\033[0m  xts manual func <topic>
+
+    Topics: intro, usage, examples, tips
+  
+  intro:
+    description: Functions overview
+    command: |
+      echo ""
+      echo "\033[1m\033[95m⚙️  XTS Functions Overview\033[0m"
+      echo "\033[95m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mWhat are Functions?\033[0m"
+      echo "Reusable formatters that can be called from any command using"
+      echo "{{function_name}} syntax."
+      echo ""
+      echo "\033[1mBenefits:\033[0m"
+      echo "  \033[92m✓\033[0m Define once, use everywhere"
+      echo "  \033[92m✓\033[0m Consistent output formatting"
+      echo "  \033[92m✓\033[0m Easy to maintain and update"
+      echo "  \033[92m✓\033[0m Cleaner command definitions"
+      echo ""
+      echo "\033[1mCommon Use Cases:\033[0m"
+      echo "  • JSON formatting (jq)"
+      echo "  • Table formatting (column)"
+      echo "  • Color highlighting"
+      echo "  • Data transformation"
+      echo "  • Error handling"
+      echo ""
+      echo "\033[93m💡 See 'xts manual functions usage' for examples\033[0m"
+      echo ""
+  
+  usage:
+    description: Function usage guide
+    command: |
+      echo ""
+      echo "\033[1m\033[94m📖 Function Usage Guide\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mStep 1: Define Function\033[0m"
+      echo "\033[2m───────────────────────\033[0m"
+      cat << 'EOF'
+
+      functions:
+        format_json:
+          description: Pretty-print JSON with colors
+          command: jq -C .
+
+      EOF
+      echo ""
+      echo "\033[1mStep 2: Use in Commands\033[0m"
+      echo "\033[2m───────────────────────\033[0m"
+      cat << 'EOF'
+
+      api_get:
+        description: GET request with JSON formatting
+        command: curl -s "$1" | {{format_json}}
+        params:
+          passthrough: true
+
+      api_post:
+        description: POST request with JSON formatting
+        command: |
+          curl -s -X POST \
+               -H "Content-Type: application/json" \
+               -d "$2" "$1" | {{format_json}}
+        params:
+          passthrough: true
+
+      EOF
+      echo ""
+      echo "\033[1mHow It Works:\033[0m"
+      echo "  1. XTS finds {{format_json}} in command"
+      echo "  2. Replaces it with function's command: jq -C ."
+      echo "  3. Pipes data through formatter"
+      echo ""
+      echo "\033[1mResult:\033[0m"
+      echo "  curl -s \"url\" | jq -C ."
+      echo ""
+      echo "\033[93m💡 Functions make commands shorter and more maintainable\033[0m"
+      echo ""
+  
+  examples:
+    description: Function examples
+    command: |
+      echo ""
+      echo "\033[1m\033[92m📚 Function Examples\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mJSON Formatting:\033[0m"
+      echo "\033[2m────────────────\033[0m"
+      cat << 'EOF'
+
+      functions:
+        format_json:
+          description: Pretty JSON with colors
+          command: jq -C .
+
+        format_json_compact:
+          description: Compact JSON
+          command: jq -c .
+
+      EOF
+      echo ""
+      echo "\033[1mTable Formatting:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      cat << 'EOF'
+
+      functions:
+        format_table:
+          description: Align columns
+          command: column -t -s ','
+
+      # Usage in command:
+      list_users:
+        command: |
+          echo "ID,Name,Email"
+          cat users.csv | {{format_table}}
+
+      EOF
+      echo ""
+      echo "\033[1mColor Highlighting:\033[0m"
+      echo "\033[2m───────────────────\033[0m"
+      cat << 'EOF'
+
+      functions:
+        highlight_errors:
+          description: Red for errors, green for success
+          command: |
+            sed -e 's/ERROR/\x1b[91mERROR\x1b[0m/g' \
+                -e 's/SUCCESS/\x1b[92mSUCCESS\x1b[0m/g'
+
+      # Usage:
+      test:
+        command: ./run_tests.sh | {{highlight_errors}}
+
+      EOF
+      echo ""
+      echo "\033[1mData Transformation:\033[0m"
+      echo "\033[2m────────────────────\033[0m"
+      cat << 'EOF'
+
+      functions:
+        extract_ips:
+          description: Extract IP addresses
+          command: grep -oE '[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}'
+
+      # Usage:
+      scan_network:
+        command: nmap -sn 192.168.1.0/24 | {{extract_ips}}
+
+      EOF
+      echo ""
+      echo "\033[93m💡 Functions can be piped together: {{func1}} | {{func2}}\033[0m"
+      echo ""
+  
+  tips:
+    description: Function best practices
+    command: |
+      echo ""
+      echo "\033[1m\033[96m💎 Function Best Practices\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1m1. Keep Functions Simple\033[0m"
+      echo "   Single responsibility - one formatter per function"
+      echo "   \033[92m✓\033[0m format_json - just JSON"
+      echo "   \033[91m✗\033[0m format_everything - too generic"
+      echo ""
+      echo "\033[1m2. Name Descriptively\033[0m"
+      echo "   Use verb + what it formats"
+      echo "   format_json, highlight_errors, extract_ips"
+      echo ""
+      echo "\033[1m3. Add Descriptions\033[0m"
+      echo "   Explain what transformation happens"
+      echo "   description: \"Pretty-print JSON with colors\""
+      echo ""
+      echo "\033[1m4. Make Functions Pipeable\033[0m"
+      echo "   Read from stdin, write to stdout"
+      echo "   command: jq -C .  \033[2m# Reads stdin, writes stdout\033[0m"
+      echo ""
+      echo "\033[1m5. Handle Empty Input\033[0m"
+      echo "   command: |"
+      echo "     if [ -t 0 ]; then"
+      echo "       echo \"Error: No input\""
+      echo "       exit 1"
+      echo "     fi"
+      echo "     jq -C ."
+      echo ""
+      echo "\033[1m6. Reuse Common Tools\033[0m"
+      echo "   Leverage: jq, grep, sed, awk, column"
+      echo "   Most powerful formatters are already built!"
+      echo ""
+      echo "\033[1m7. Test Independently\033[0m"
+      echo "   echo '{\"key\":\"value\"}' | jq -C ."
+      echo "   Verify function works before using in commands"
+      echo ""
+      echo "\033[93m💡 Good functions make your entire .xts file better\033[0m"
+      echo ""
+
+completion:
+  description: |
+    \033[1mTab Completion Setup\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual completion <topic>
+    
+    Topics: install, test, troubleshoot
+  
+  install:
+    description: Install tab completion
+    command: |
+      echo ""
+      echo "\033[1m\033[96m🔧 Installing Tab Completion\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mLocate Completion Script:\033[0m"
+      echo "  find \$(pip show xts-core | grep Location | cut -d' ' -f2) -name xts-completion.bash"
+      echo ""
+      echo "\033[1mOption 1: Temporary (Current Session)\033[0m"
+      echo "\033[2m──────────────────────────────────────────\033[0m"
+      echo "  source /path/to/xts-completion.bash"
+      echo ""
+      echo "\033[1mOption 2: Permanent (All Sessions)\033[0m"
+      echo "\033[2m──────────────────────────────────────────\033[0m"
+      echo "  # Add to ~/.bashrc"
+      echo "  echo 'source /path/to/xts-completion.bash' >> ~/.bashrc"
+      echo "  source ~/.bashrc"
+      echo ""
+      echo "\033[1mDevelopment Installation:\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo "  # From git clone"
+      echo "  cd xts_core"
+      echo "  echo \"source \$(pwd)/xts-completion.bash\" >> ~/.bashrc"
+      echo "  source ~/.bashrc"
+      echo ""
+      echo "\033[1mVerify Installation:\033[0m"
+      echo "  xts <TAB><TAB>"
+      echo "  \033[2m# Should show: alias, demo, manual, ...\033[0m"
+      echo ""
+      echo "\033[93m💡 Tab completion works for all commands and sub-commands!\033[0m"
+      echo ""
+  
+  test:
+    description: Test tab completion
+    command: |
+      echo ""
+      echo "\033[1m\033[92m✓ Testing Tab Completion\033[0m"
+      echo "\033[92m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mTest 1: Main Commands\033[0m"
+      echo "  Type: xts <TAB><TAB>"
+      echo "  Expected: alias, demo, manual, ..."
+      echo ""
+      echo "\033[1mTest 2: Alias Sub-commands\033[0m"
+      echo "  Type: xts alias <TAB><TAB>"
+      echo "  Expected: add, list, remove, refresh, clean"
+      echo ""
+      echo "\033[1mTest 3: Installed Aliases\033[0m"
+      echo "  Type: xts demo <TAB><TAB>"
+      echo "  Expected: intro, features, create, workflow, ..."
+      echo ""
+      echo "\033[1mTest 4: Nested Commands\033[0m"
+      echo "  Type: xts demo features <TAB><TAB>"
+      echo "  Expected: colors, commands, functions, ..."
+      echo ""
+      echo "\033[1mTest 5: Command Options\033[0m"
+      echo "  Type: xts --<TAB><TAB>"
+      echo "  Expected: --help, --version"
+      echo ""
+      echo "\033[1mIf any test fails:\033[0m"
+      echo "  1. Check completion script is sourced"
+      echo "  2. Reload shell: exec bash"
+      echo "  3. See: xts manual completion troubleshoot"
+      echo ""
+      echo "\033[93m💡 Working completion means faster, more productive work!\033[0m"
+      echo ""
+  
+  troubleshoot:
+    description: Fix completion issues
+    command: |
+      echo ""
+      echo "\033[1m\033[93m🔧 Tab Completion Troubleshooting\033[0m"
+      echo "\033[93m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mProblem: No completion at all\033[0m"
+      echo "\033[2m──────────────────────────────\033[0m"
+      echo "  Check if script is sourced:"
+      echo "    type _xts_completion"
+      echo "  "
+      echo "  If 'not found', source the script:"
+      echo "    source /path/to/xts-completion.bash"
+      echo ""
+      echo "\033[1mProblem: Partial completion\033[0m"
+      echo "\033[2m────────────────────────────\033[0m"
+      echo "  Some completions work, others don't:"
+      echo "  1. Check XTS version: xts --version"
+      echo "  2. Update completion script"
+      echo "  3. Reload shell: exec bash"
+      echo ""
+      echo "\033[1mProblem: Old completions cached\033[0m"
+      echo "\033[2m─────────────────────────────────\033[0m"
+      echo "  Bash caches completions:"
+      echo "    complete -r xts  # Clear XTS completions"
+      echo "    source /path/to/xts-completion.bash"
+      echo ""
+      echo "\033[1mProblem: Nested commands not working\033[0m"
+      echo "\033[2m──────────────────────────────────────\033[0m"
+      echo "  Ensure completion script is latest version:"
+      echo "    pip install --upgrade xts-core"
+      echo "    # Re-source completion script"
+      echo ""
+      echo "\033[1mProblem: Works in one terminal, not another\033[0m"
+      echo "\033[2m────────────────────────────────────────────\033[0m"
+      echo "  Add to ~/.bashrc for all terminals:"
+      echo "    echo 'source /path/to/xts-completion.bash' >> ~/.bashrc"
+      echo ""
+      echo "\033[93m💡 Most issues fixed by re-sourcing the completion script\033[0m"
+      echo ""
+
+troubleshoot:
+  description: |
+    \033[1mTroubleshooting Guide\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual troubleshoot <topic>
+    
+    Topics: common, errors, performance, debug
+  
+  common:
+    description: Common issues
+    command: |
+      echo ""
+      echo "\033[1m\033[93m🔧 Common Issues\033[0m"
+      echo "\033[93m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1m1. Command Not Found\033[0m"
+      echo "\033[2m────────────────────\033[0m"
+      echo "  Symptom: xts: command not found"
+      echo "  Solution:"
+      echo "    • Check installation: pip list | grep xts"
+      echo "    • Add to PATH: export PATH=\"\$PATH:\$(pip show xts-core | grep Location | cut -d' ' -f2)/bin\""
+      echo "    • Reinstall: pip install --upgrade xts-core"
+      echo ""
+      echo "\033[1m2. Alias Not Found\033[0m"
+      echo "\033[2m──────────────────\033[0m"
+      echo "  Symptom: Error: Alias 'myproject' not found"
+      echo "  Solution:"
+      echo "    • List aliases: xts alias list"
+      echo "    • Add alias: xts alias add myproject /path/to/file.xts"
+      echo "    • Check spelling"
+      echo ""
+      echo "\033[1m3. Command Fails Silently\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo "  Symptom: No output, no error"
+      echo "  Solution:"
+      echo "    • Check command syntax in .xts file"
+      echo "    • Test command manually: bash -c '<your command>'"
+      echo "    • Add debugging: set -x in command"
+      echo ""
+      echo "\033[1m4. YAML Parsing Error\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "  Symptom: Invalid YAML structure"
+      echo "  Solution:"
+      echo "    • Check indentation (spaces, not tabs)"
+      echo "    • Validate at yaml-online-parser.appspot.com"
+      echo "    • Look for missing colons or quotes"
+      echo ""
+      echo "\033[1m5. Function Not Expanding\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      echo "  Symptom: {{format_json}} appears in output"
+      echo "  Solution:"
+      echo "    • Check function is defined in 'functions:' section"
+      echo "    • Verify function name matches exactly"
+      echo "    • Ensure schema_version is set"
+      echo ""
+  
+  errors:
+    description: Error messages explained
+    command: |
+      echo ""
+      echo "\033[1m\033[91m📋 Error Messages Explained\033[0m"
+      echo "\033[91m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[91mError:\033[0m Missing schema_version"
+      echo "\033[92mFix:\033[0m Add to top of .xts file:"
+      echo "  schema_version: \"1.0\""
+      echo ""
+      echo "\033[91mError:\033[0m Brief exceeds 120 characters"
+      echo "\033[92mFix:\033[0m Shorten brief description:"
+      echo "  brief: \"Shorter description here\""
+      echo ""
+      echo "\033[91mError:\033[0m Command not found in alias"
+      echo "\033[92mFix:\033[0m Check available commands:"
+      echo "  xts <alias> --help"
+      echo ""
+      echo "\033[91mError:\033[0m Function '<name>' not defined"
+      echo "\033[92mFix:\033[0m Add to functions section:"
+      echo "  functions:"
+      echo "    <name>:"
+      echo "      command: ..."
+      echo ""
+      echo "\033[91mError:\033[0m Invalid passthrough parameter"
+      echo "\033[92mFix:\033[0m Use correct syntax:"
+      echo "  params:"
+      echo "    passthrough: true"
+      echo ""
+      echo "\033[91mError:\033[0m GitHub API rate limit"
+      echo "\033[92mFix:\033[0m Set GitHub token:"
+      echo "  export GITHUB_TOKEN=ghp_your_token"
+      echo ""
+      echo "\033[91mError:\033[0m Permission denied (GitHub)"
+      echo "\033[92mFix:\033[0m Repository may be private:"
+      echo "  export GITHUB_TOKEN=ghp_your_token"
+      echo "  Verify token has 'repo' scope"
+      echo ""
+  
+  performance:
+    description: Performance optimization
+    command: |
+      echo ""
+      echo "\033[1m\033[94m⚡ Performance Optimization\033[0m"
+      echo "\033[94m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1mSlow command execution:\033[0m"
+      echo "\033[2m─────────────────────────\033[0m"
+      echo "  • Avoid unnecessary pipes"
+      echo "  • Use built-in tools (grep, awk) over external scripts"
+      echo "  • Cache expensive operations"
+      echo ""
+      echo "\033[1mExample - Cache API results:\033[0m"
+      cat << 'EOF'
+
+      get_data:
+        command: |
+          CACHE=/tmp/api_cache.json
+          if [ ! -f $CACHE ] || [ $(($(date +%s) - $(stat -c %Y $CACHE))) -gt 300 ]; then
+            curl -s https://api.example.com/data > $CACHE
+          fi
+          cat $CACHE | jq -C .
+
+      EOF
+      echo ""
+      echo "\033[1mSlow GitHub queries:\033[0m"
+      echo "\033[2m────────────────────\033[0m"
+      echo "  • Set GITHUB_TOKEN (5000 req/hr vs 60)"
+      echo "  • Specify subdirectory instead of full repo"
+      echo "  • Use 'xts alias refresh' only when needed"
+      echo ""
+      echo "\033[1mLarge .xts files:\033[0m"
+      echo "\033[2m─────────────────\033[0m"
+      echo "  • Split into multiple .xts files by feature"
+      echo "  • Use functions to reduce duplication"
+      echo "  • Keep commands focused and single-purpose"
+      echo ""
+  
+  debug:
+    description: Debugging techniques
+    command: |
+      echo ""
+      echo "\033[1m\033[96m🐛 Debugging Techniques\033[0m"
+      echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+      echo ""
+      echo "\033[1m1. Enable Bash Debug Mode\033[0m"
+      echo "\033[2m──────────────────────────\033[0m"
+      cat << 'EOF'
+
+      my_command:
+        command: |
+          set -x  # Enable debug output
+          echo "Step 1"
+          some_command
+          echo "Step 2"
+          set +x  # Disable debug
+
+      EOF
+      echo ""
+      echo "\033[1m2. Add Verbose Logging\033[0m"
+      echo "\033[2m───────────────────────\033[0m"
+      cat << 'EOF'
+
+      deploy:
+        command: |
+          echo "[DEBUG] Starting deployment"
+          echo "[DEBUG] Environment: $ENV"
+          ./deploy.sh "$ENV"
+          echo "[DEBUG] Deployment complete"
+
+      EOF
+      echo ""
+      echo "\033[1m3. Test Command Directly\033[0m"
+      echo "\033[2m─────────────────────────\033[0m"
+      echo "  # Extract command from .xts file"
+      echo "  bash -c '<your command here>'"
+      echo ""
+      echo "\033[1m4. Check Function Expansion\033[0m"
+      echo "\033[2m───────────────────────────────\033[0m"
+      echo "  # Manually substitute function"
+      echo "  echo '{\"key\":\"val\"}' | jq -C ."
+      echo ""
+      echo "\033[1m5. Validate YAML Structure\033[0m"
+      echo "\033[2m───────────────────────────\033[0m"
+      echo "  python3 -c 'import yaml; yaml.safe_load(open(\"file.xts\"))'"
+      echo ""
+      echo "\033[1m6. Check Alias Cache\033[0m"
+      echo "\033[2m──────────────────────\033[0m"
+      echo "  ls -la ~/.xts/cache/"
+      echo "  cat ~/.xts/cache/<alias>.xts"
+      echo ""
+      echo "\033[93m💡 Add 'set -x' at start of command for full trace\033[0m"
+      echo ""
+
+faq:
+  description: |
+    \033[1mFrequently Asked Questions\033[0m
+    
+    \033[1mUsage:\033[0m  xts manual faq
+    
+    Common questions and answers
+  command: |
+    echo ""
+    echo "\033[1m\033[96m❓ Frequently Asked Questions\033[0m"
+    echo "\033[96m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+    echo "\033[1mQ: What languages can I use in commands?\033[0m"
+    echo "A: Any language! Commands run in bash, so you can invoke:"
+    echo "   • Bash/Shell scripts"
+    echo "   • Python: python3 -c '...'"
+    echo "   • Node.js: node -e '...'"
+    echo "   • Any executable in PATH"
+    echo ""
+    echo "\033[1mQ: Can I use .xts files without installing as alias?\033[0m"
+    echo "A: Yes! Run directly:"
+    echo "   xts -f myproject.xts command_name"
+    echo ""
+    echo "\033[1mQ: How do I share .xts files with my team?\033[0m"
+    echo "A: Three ways:"
+    echo "   1. Push to GitHub, team uses: xts alias add <github-url>"
+    echo "   2. Share file, team uses: xts alias add name file.xts"
+    echo "   3. Host on web, team uses: xts alias add name <http-url>"
+    echo ""
+    echo "\033[1mQ: Can I override installed aliases?\033[0m"
+    echo "A: Yes:"
+    echo "   xts alias remove <name>"
+    echo "   xts alias add <name> <new-path>"
+    echo ""
+    echo "\033[1mQ: Do functions work across commands?\033[0m"
+    echo "A: Yes! Define once in 'functions:', use in all commands."
+    echo ""
+    echo "\033[1mQ: Can I call one command from another?\033[0m"
+    echo "A: Yes:"
+    echo "   setup:"
+    echo "     command: echo \"Setting up...\""
+    echo "   "
+    echo "   full_workflow:"
+    echo "     command: |"
+    echo "       xts myproject setup"
+    echo "       echo \"Continuing...\""
+    echo ""
+    echo "\033[1mQ: How do I update cached GitHub files?\033[0m"
+    echo "A: xts alias refresh <alias_name>"
+    echo ""
+    echo "\033[1mQ: Can I use environment variables?\033[0m"
+    echo "A: Yes! \${VAR_NAME} in commands access environment."
+    echo "   Use \${VAR:-default} for default values."
+    echo ""
+    echo "\033[1mQ: Is there a size limit for .xts files?\033[0m"
+    echo "A: No hard limit, but keep files focused and maintainable."
+    echo "   Split large projects into multiple .xts files."
+    echo ""
+    echo "\033[1mQ: Can I use XTS for test automation?\033[0m"
+    echo "A: Absolutely! That's what it was designed for."
+    echo "   Define test commands, run with: xts myproject test"
+    echo ""
+    echo "\033[1mQ: How do I get help on a specific command?\033[0m"
+    echo "A: xts <alias> <command> --help"
+    echo ""
+    echo "\033[93m💡 Still have questions? Check GitHub issues or documentation\033[0m"
+    echo ""
