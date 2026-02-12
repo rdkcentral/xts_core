@@ -56,6 +56,7 @@ except:
 CACHE_DIR = os.path.expanduser("~/.xts/cache")
 ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
 METADATA_FILE = os.path.expanduser("~/.xts/metadata.json")
+PROXIES_FILE = os.path.expanduser("~/.xts/proxies.json")
 
 
 class AliasStatus:
@@ -138,12 +139,13 @@ def find_xts_files(path: str, recursive: bool = False) -> List[str]:
     return sorted(xts_files)
 
 
-def fetch_remote_file(url: str, cache_path: str) -> Tuple[bool, Optional[Dict]]:
+def fetch_remote_file(url: str, cache_path: str, proxy_config: Optional[Dict] = None) -> Tuple[bool, Optional[Dict]]:
     """Fetch remote .xts file and cache it.
     
     Args:
         url: Remote URL
         cache_path: Where to cache the file
+        proxy_config: Optional proxy configuration dict with 'proxy', 'type', 'username', 'password'
         
     Returns:
         Tuple of (success, metadata_dict)
@@ -154,8 +156,52 @@ def fetch_remote_file(url: str, cache_path: str) -> Tuple[bool, Optional[Dict]]:
         return False, None
     
     try:
+        # Setup proxy if configured
+        proxies = None
+        auth = None
+        
+        if proxy_config:
+            proxy_url = proxy_config.get('proxy')
+            proxy_type = proxy_config.get('type', 'http')
+            username = proxy_config.get('username')
+            password = proxy_config.get('password')
+            
+            if proxy_url:
+                # Handle SSH proxy (not supported by requests directly)
+                if proxy_type == 'ssh':
+                    utils.warning("SSH proxy requires SSH tunnel setup (not implemented in fetch)")
+                    utils.info("Set up SSH tunnel manually: ssh -D <port> <user>@<host>")
+                    utils.info("Then use SOCKS5 proxy with localhost:<port>")
+                    return False, None
+                
+                # If username/password provided, embed in proxy URL
+                if username and password:
+                    # Parse proxy to insert credentials
+                    if '://' in proxy_url:
+                        scheme, rest = proxy_url.split('://', 1)
+                        proxy_url = f"{scheme}://{username}:{password}@{rest}"
+                    else:
+                        # Use proxy type to construct URL
+                        if proxy_type == 'socks5':
+                            proxy_url = f"socks5://{username}:{password}@{proxy_url}"
+                        else:
+                            proxy_url = f"{proxy_type}://{username}:{password}@{proxy_url}"
+                elif not '://' in proxy_url:
+                    # Add scheme if not present
+                    if proxy_type == 'socks5':
+                        proxy_url = f"socks5://{proxy_url}"
+                    else:
+                        proxy_url = f"{proxy_type}://{proxy_url}"
+                
+                proxies = {
+                    'http': proxy_url,
+                    'https': proxy_url
+                }
+                proxy_display = proxy_url.split('@')[-1] if '@' in proxy_url else proxy_url
+                print(f"Using {proxy_type.upper()} proxy: {proxy_display}")
+        
         print(f"Fetching: {url}")
-        response = requests.get(url, timeout=30)
+        response = requests.get(url, timeout=30, proxies=proxies)
         response.raise_for_status()
         
         # Write to cache
@@ -173,6 +219,8 @@ def fetch_remote_file(url: str, cache_path: str) -> Tuple[bool, Optional[Dict]]:
                 "last_modified": response.headers.get('Last-Modified', ''),
             }
         }
+        
+        # Note: proxy_name is stored at the alias level, not in fetch metadata
         
         return True, metadata
         
@@ -244,9 +292,32 @@ def check_remote_updates(metadata: Dict) -> Tuple[bool, str]:
     url = metadata.get("source")
     cached_etag = metadata.get("http_headers", {}).get("etag", "")
     
+    # Get proxy config from proxy name if available
+    proxy_config = None
+    proxies = None
+    proxy_name = metadata.get('proxy_name')
+    
+    if proxy_name:
+        proxy_config = get_proxy_config(proxy_name)
+        if proxy_config:
+            proxy_url = proxy_config.get('proxy')
+            username = proxy_config.get('username')
+            password = proxy_config.get('password')
+            
+            if proxy_url:
+                # If username/password available, embed in proxy URL
+                if username and password:
+                    if '://' in proxy_url:
+                        scheme, rest = proxy_url.split('://', 1)
+                        proxy_url = f"{scheme}://{username}:{password}@{rest}"
+                    else:
+                        proxy_url = f"http://{username}:{password}@{proxy_url}"
+                
+                proxies = {'http': proxy_url, 'https': proxy_url}
+    
     try:
         # HEAD request to check headers without downloading
-        response = requests.head(url, timeout=10, allow_redirects=True)
+        response = requests.head(url, timeout=10, allow_redirects=True, proxies=proxies)
         response.raise_for_status()
         
         current_etag = response.headers.get('ETag', '')
@@ -315,13 +386,113 @@ def save_metadata(metadata: Dict):
         utils.warning(f"Failed to save metadata: {e}")
 
 
-def add_alias(name: str, value: str, recursive: bool = False):
+def load_proxies() -> Dict:
+    """Load proxy configurations."""
+    if not os.path.exists(PROXIES_FILE):
+        return {}
+    
+    try:
+        with open(PROXIES_FILE, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def save_proxies(proxies: Dict):
+    """Save proxy configurations."""
+    ensure_dirs()
+    try:
+        with open(PROXIES_FILE, 'w') as f:
+            json.dump(proxies, f, indent=2)
+    except Exception as e:
+        utils.warning(f"Failed to save proxies: {e}")
+
+
+def add_proxy(name: str, proxy: str, proxy_type: str = 'http', username: Optional[str] = None, password: Optional[str] = None) -> bool:
+    """Add or update a proxy configuration.
+    
+    Args:
+        name: Proxy name/identifier
+        proxy: Proxy server (host:port or protocol://host:port)
+        proxy_type: Proxy type (http, https, socks5, ssh)
+        username: Optional proxy username
+        password: Optional proxy password
+        
+    Returns:
+        True on success, False on failure
+    """
+    # Validate proxy type
+    valid_types = ['http', 'https', 'socks5', 'ssh']
+    if proxy_type.lower() not in valid_types:
+        utils.error(f"Invalid proxy type '{proxy_type}'. Must be one of: {', '.join(valid_types)}")
+        return False
+    
+    ensure_dirs()
+    proxies = load_proxies()
+    
+    proxies[name] = {
+        'proxy': proxy,
+        'type': proxy_type.lower(),
+        'username': username,
+        'password': password
+    }
+    
+    save_proxies(proxies)
+    utils.success(f"✓ Added {proxy_type.upper()} proxy '{name}' -> {proxy}")
+    return True
+
+
+def list_proxies() -> Dict:
+    """List all proxy configurations.
+    
+    Returns:
+        Dictionary of proxy configurations
+    """
+    return load_proxies()
+
+
+def remove_proxy(name: str) -> bool:
+    """Remove a proxy configuration.
+    
+    Args:
+        name: Proxy name to remove
+        
+    Returns:
+        True on success, False if proxy not found
+    """
+    proxies = load_proxies()
+    
+    if name not in proxies:
+        utils.warning(f"Proxy '{name}' not found")
+        return False
+    
+    del proxies[name]
+    save_proxies(proxies)
+    utils.success(f"✓ Removed proxy '{name}'")
+    return True
+
+
+def get_proxy_config(proxy_name: str) -> Optional[Dict]:
+    """Get proxy configuration by name.
+    
+    Args:
+        proxy_name: Name of the proxy configuration
+        
+    Returns:
+        Proxy config dict or None if not found
+    """
+    proxies = load_proxies()
+    return proxies.get(proxy_name)
+
+
+def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Optional[str] = None):
     """Add or update an alias with universal caching.
     
     Args:
         name: Alias name
         value: Source path or URL
         recursive: If True and value is directory, scan recursively
+        proxy_name: Optional proxy name (reference to proxy configuration)
     """
     ensure_dirs()
     
@@ -329,15 +500,26 @@ def add_alias(name: str, value: str, recursive: bool = False):
     aliases = list_aliases()
     all_metadata = load_metadata()
     
+    # Get proxy config if proxy name provided
+    proxy_config = None
+    if proxy_name:
+        proxy_config = get_proxy_config(proxy_name)
+        if not proxy_config:
+            utils.error(f"Proxy '{proxy_name}' not found. Add it first with: xts proxy add {proxy_name} <host:port>")
+            return
+    
     # Determine if value is URL, file, or directory
     if is_url(value):
         # Remote URL
         cache_path = get_cache_path(value, name)
-        success, metadata = fetch_remote_file(value, cache_path)
+        success, metadata = fetch_remote_file(value, cache_path, proxy_config)
         
         if success:
             aliases[name] = cache_path
             all_metadata[name] = metadata
+            # Store proxy name reference in metadata
+            if proxy_name:
+                all_metadata[name]['proxy_name'] = proxy_name
             utils.success(f"✓ Added remote alias '{name}' -> {value}")
         else:
             utils.error(f"Failed to add alias '{name}'")
@@ -481,7 +663,17 @@ def refresh_alias(name: str) -> bool:
     print(f"Refreshing '{name}' from {source}...")
     
     if source_type == "remote":
-        success, new_meta = fetch_remote_file(source, cache_path)
+        # Get proxy config from proxy name if available
+        proxy_config = None
+        proxy_name = meta.get('proxy_name')
+        if proxy_name:
+            proxy_config = get_proxy_config(proxy_name)
+            if not proxy_config:
+                utils.warning(f"Proxy '{proxy_name}' not found, continuing without proxy")
+        success, new_meta = fetch_remote_file(source, cache_path, proxy_config)
+        # Preserve proxy_name in refreshed metadata
+        if success and proxy_name:
+            new_meta['proxy_name'] = proxy_name
     elif source_type == "local":
         if not os.path.exists(source):
             utils.warning(f"Source file missing: {source}")

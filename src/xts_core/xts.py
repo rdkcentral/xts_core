@@ -316,10 +316,16 @@ class XTS():
         pre_parser.add_argument('--version', '-v', action='version', version=f'xts {__version__}')
         pre_subparsers = pre_parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(pre_subparsers)
+        self._add_proxy_subcommands(pre_subparsers)
 
         if len(sys.argv) > 1 and sys.argv[1] == "alias":
             parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
             self._handle_alias(parsed_args)
+            sys.exit(0)
+        
+        if len(sys.argv) > 1 and sys.argv[1] == "proxy":
+            parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
+            self._handle_proxy(parsed_args)
             sys.exit(0)
 
         # resolve first arg as config/alias
@@ -337,6 +343,7 @@ class XTS():
         parser = RichArgumentParser(prog="xts")
         subparsers = parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(subparsers)
+        self._add_proxy_subcommands(subparsers)
 
         command_list = list(self._get_command_choices())
         for command, description in command_list:
@@ -422,6 +429,7 @@ class XTS():
             name = parsed_args.name
             path = parsed_args.path
             recursive = getattr(parsed_args, 'recursive', False)
+            proxy_name = getattr(parsed_args, 'proxy', None)
 
             # Check if this is directory-based batch addition
             if path is None or name in ['.', '*.xts'] or os.path.isdir(name):
@@ -454,7 +462,7 @@ class XTS():
                 # Single file/URL alias
                 if not is_url(path):
                     path = os.path.abspath(path)
-                xts_alias.add_alias(name, path)
+                xts_alias.add_alias(name, path, recursive=False, proxy_name=proxy_name)
                 success(f"+ Alias [bold cyan]{name}[/bold cyan] -> [dim]{path}[/dim]")
                 # Show usage hint
                 console = Console()
@@ -516,6 +524,8 @@ class XTS():
             help='Path or URL (required for single alias, omit for directory mode)')
         add_parser.add_argument('-r', '--recursive', action='store_true',
             help='Recursively search for .xts files in subdirectories')
+        add_parser.add_argument('--proxy', type=str, default=None,
+            help='Proxy name (reference to configured proxy, e.g., --proxy sky)')
 
         # alias list [--check]
         list_parser = alias_subparsers.add_parser('list', help='List all aliases', formatter_class=RichHelpFormatter)
@@ -532,6 +542,73 @@ class XTS():
 
         # alias clean
         clean_parser = alias_subparsers.add_parser('clean', help='Find and remove broken aliases', formatter_class=RichHelpFormatter)
+    
+    def _add_proxy_subcommands(self, subparsers):
+        """
+        Adds the 'proxy' subcommand and its subcommands (add, list, remove)
+        to the provided subparsers object.
+
+        Args:
+            subparsers (argparse._SubParsersAction): The subparsers object to attach proxy commands to.
+        """
+        proxy_parser = subparsers.add_parser('proxy', help='Manage proxy configurations', formatter_class=RichHelpFormatter)
+        proxy_subparsers = proxy_parser.add_subparsers(dest='proxy_cmd', required=True)
+
+        # proxy add <name> <proxy> [--type <type>] [--username <user>] [--password <pass>]
+        add_parser = proxy_subparsers.add_parser('add', 
+            help='Add a proxy configuration',
+            formatter_class=RichHelpFormatter)
+        add_parser.add_argument('name', 
+            help='Proxy name/identifier (e.g., sky)')
+        add_parser.add_argument('proxy',
+            help='Proxy server (format: host:port or protocol://host:port)')
+        add_parser.add_argument('--type', type=str, default='http',
+            choices=['http', 'https', 'socks5', 'ssh'],
+            help='Proxy type (default: http)')
+        add_parser.add_argument('--username', type=str, default=None,
+            help='Proxy username (optional)')
+        add_parser.add_argument('--password', type=str, default=None,
+            help='Proxy password (optional)')
+
+        # proxy list
+        list_parser = proxy_subparsers.add_parser('list', help='List all proxy configurations', formatter_class=RichHelpFormatter)
+
+        # proxy remove <name>
+        remove_parser = proxy_subparsers.add_parser('remove', help='Remove a proxy configuration', formatter_class=RichHelpFormatter)
+        remove_parser.add_argument('name', help='Name of the proxy to remove')
+    
+    def _handle_proxy(self, parsed_args):
+        """
+        Execute proxy subcommands (add, list, remove).
+        """
+        if parsed_args.proxy_cmd == "add":
+            name = parsed_args.name
+            proxy = parsed_args.proxy
+            proxy_type = getattr(parsed_args, 'type', 'http')
+            username = getattr(parsed_args, 'username', None)
+            password = getattr(parsed_args, 'password', None)
+            
+            xts_alias.add_proxy(name, proxy, proxy_type=proxy_type, username=username, password=password)
+
+        elif parsed_args.proxy_cmd == "list":
+            proxies = xts_alias.list_proxies()
+            if not proxies:
+                warning("No proxies configured. Use [bold]xts proxy add[/bold] to create one.")
+            else:
+                info(f"\nConfigured proxies ({len(proxies)}):")
+                for name, config in proxies.items():
+                    proxy_url = config.get('proxy', '')
+                    proxy_type = config.get('type', 'http').upper()
+                    username = config.get('username', '')
+                    if username:
+                        success(f"  [bold cyan]{name}[/bold cyan] ({proxy_type}) -> {proxy_url} (user: {username})")
+                    else:
+                        success(f"  [bold cyan]{name}[/bold cyan] ({proxy_type}) -> {proxy_url}")
+                print()
+
+        elif parsed_args.proxy_cmd == "remove":
+            xts_alias.remove_proxy(parsed_args.name)
+            success(f"+ Removed proxy [bold cyan]{parsed_args.name}[/bold cyan]")
     
     def _find_xts_config(self):
         """

@@ -156,6 +156,35 @@ To check which commands are available run `xts --help`. This may need to be run,
 xts run example --help
 ```
 
+### Working with Aliases
+
+XTS supports aliases for easy access to .xts files from any location:
+
+```bash
+# Add a local alias
+xts alias add mytools ~/projects/tools.xts
+
+# Add a remote alias
+xts alias add demo https://example.com/demo.xts
+
+# Add remote alias through a proxy
+xts alias add sky http://server:5000/allocator.xts \
+    --proxy proxy.example.com:8080 \
+    --proxy-username user \
+    --proxy-password pass
+
+# Use the alias
+xts mytools some_command
+
+# List aliases
+xts alias list
+
+# Refresh an alias
+xts alias refresh demo
+```
+
+**Proxy Support**: When adding remote aliases behind a corporate firewall or proxy, use the `--proxy`, `--proxy-username`, and `--proxy-password` options. The proxy configuration is saved with the alias and automatically used for updates and refreshes.
+
 ### Write a custom .xts file
 Any file with the extension `.xts` will be picked up by the tool. Therefore, creating a file with this extension and filling it with valid command definitions will create a custom `.xts` file.
 

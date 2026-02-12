@@ -267,12 +267,52 @@ xts analyze https://github.com/user/repo
 
 ### Proxy Support
 
+XTS supports HTTP proxies for remote aliases and analysis.
+
+#### Option 1: System Environment Variables
+
 Uses system HTTP proxy settings:
 
 ```bash
 export HTTP_PROXY="http://proxy.example.com:8080"
 export HTTPS_PROXY="https://proxy.example.com:8080"
 xts analyze https://github.com/user/repo
+```
+
+#### Option 2: Per-Alias Proxy Configuration
+
+Configure proxy when adding a remote alias:
+
+```bash
+# Basic proxy
+xts alias add sky http://server:5000/xts_allocator.xts \
+    --proxy proxy.example.com:8080
+
+# With authentication
+xts alias add sky http://server:5000/xts_allocator.xts \
+    --proxy proxy.example.com:8080 \
+    --proxy-username myuser \
+    --proxy-password mypass
+```
+
+**Features:**
+- Proxy settings are saved with the alias
+- Used automatically for updates and refreshes
+- Password is not stored in metadata (re-enter on refresh if needed)
+- Supports HTTP and HTTPS proxies
+
+**Example:**
+
+```bash
+# Add alias through corporate proxy
+xts alias add allocator http://internal-server:5000/allocator.xts \
+    --proxy corporate-proxy:3128 \
+    --proxy-username employee123 \
+    --proxy-password secret
+
+# Alias automatically uses proxy for all operations
+xts alias list --check    # Uses proxy to check for updates
+xts alias refresh allocator  # Uses proxy to refresh
 ```
 
 ## Troubleshooting
