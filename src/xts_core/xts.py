@@ -328,6 +328,14 @@ class XTS():
             self._handle_proxy(parsed_args)
             sys.exit(0)
 
+        # Early dispatch for plugin positionals (validate, create, edit, functions, etc.)
+        # Core commands are protected and cannot be overridden by plugins.
+        _CORE_COMMANDS = {"alias", "proxy", "--help", "-h", "--version", "-v"}
+        if len(sys.argv) > 1 and sys.argv[1] not in _CORE_COMMANDS:
+            for plugin_cls in self._plugins:
+                if sys.argv[1] in plugin_cls().provided_positionals:
+                    return sys.argv[1:]
+
         # resolve first arg as config/alias
         resolved_alias_name = None
         if len(sys.argv) > 1:
@@ -705,6 +713,21 @@ class XTS():
                     command_sections.update({key:self._xts_config.get(key)})
         return command_sections
 
+    @staticmethod
+    def _inject_standard_functions(config: dict) -> dict:
+        """Merge standard library functions into the config.
+
+        Standard functions are added first, then user-defined functions
+        override them, ensuring user definitions always take priority.
+        """
+        from .standard_functions import get_standard_functions
+
+        merged = config.copy()
+        std = get_standard_functions()
+        std.update(config.get('functions', {}))
+        merged['functions'] = std
+        return merged
+
     def run(self):
         """Run the XTS app.
 
@@ -717,7 +740,8 @@ class XTS():
                 plugin().run(args)
         else:
             try:
-                yaml_runner = YamlRunner(self._command_sections,
+                config = self._inject_standard_functions(self._command_sections)
+                yaml_runner = YamlRunner(config,
                         program='xts',
                         hierarchical=True,
                         fail_fast=True)

@@ -185,8 +185,9 @@ class XTSValidator:
         commands = config.get('commands', {})
         functions = config.get('functions', {})
         
-        # Build set of defined functions
-        func_names = set(functions.keys())
+        # Build set of defined functions (user-defined + standard library)
+        from .standard_functions import get_standard_function_names
+        func_names = get_standard_function_names() | set(functions.keys())
         
         for cmd_name, cmd_def in commands.items():
             # Find all placeholders in command
