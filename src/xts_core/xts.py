@@ -267,6 +267,11 @@ class XTS():
             # Built-in commands
             console.print("[bold yellow]Commands:[/bold yellow]")
             console.print(f"  [bold green]{'alias':<20}[/bold green] [dim]Manage aliases (add, list, remove, refresh, clean)[/dim]")
+            console.print(f"  [bold green]{'guide':<20}[/bold green] [dim]Interactive XTS tutorial and training[/dim]")
+            console.print(f"  [bold green]{'manual':<20}[/bold green] [dim]Feature summary and documentation links[/dim]")
+            console.print(f"  [bold green]{'validate':<20}[/bold green] [dim]Validate .xts file schema and syntax[/dim]")
+            console.print(f"  [bold green]{'create':<20}[/bold green] [dim]Create new .xts file interactively[/dim]")
+            console.print(f"  [bold green]{'functions':<20}[/bold green] [dim]List standard library functions[/dim]")
             
             # Show available aliases
             aliases = xts_alias.list_aliases()

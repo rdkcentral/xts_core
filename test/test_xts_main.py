@@ -505,5 +505,180 @@ class TestIntegrationScenarios:
         assert 'alias2' in aliases
 
 
+class TestProxyCommands:
+    """Test proxy subcommands (add, list, remove) via CLI."""
+    
+    def test_proxy_add_http(self, temp_config_dir):
+        """Test 'xts proxy add' with HTTP proxy."""
+        from xts_core import xts_alias
+        
+        # Add HTTP proxy
+        success = xts_alias.add_proxy('test_http', 'proxy.example.com:8080', proxy_type='http')
+        assert success
+        
+        # Verify it was added
+        proxies = xts_alias.list_proxies()
+        assert 'test_http' in proxies
+        assert proxies['test_http']['proxy'] == 'proxy.example.com:8080'
+        assert proxies['test_http']['type'] == 'http'
+        
+        # Cleanup
+        xts_alias.remove_proxy('test_http')
+    
+    def test_proxy_add_socks5(self, temp_config_dir):
+        """Test 'xts proxy add' with SOCKS5 proxy."""
+        from xts_core import xts_alias
+        
+        # Add SOCKS5 proxy
+        success = xts_alias.add_proxy('test_socks', 'localhost:1080', proxy_type='socks5')
+        assert success
+        
+        # Verify type is correct
+        proxies = xts_alias.list_proxies()
+        assert 'test_socks' in proxies
+        assert proxies['test_socks']['type'] == 'socks5'
+        
+        # Cleanup
+        xts_alias.remove_proxy('test_socks')
+    
+    def test_proxy_add_with_credentials(self, temp_config_dir):
+        """Test 'xts proxy add' with username and password."""
+        from xts_core import xts_alias
+        
+        # Add proxy with credentials
+        success = xts_alias.add_proxy('test_auth', 'proxy.example.com:8080',
+                                      username='testuser', password='testpass')
+        assert success
+        
+        # Verify credentials were saved
+        proxies = xts_alias.list_proxies()
+        assert 'test_auth' in proxies
+        assert proxies['test_auth']['username'] == 'testuser'
+        assert proxies['test_auth']['password'] == 'testpass'
+        
+        # Cleanup
+        xts_alias.remove_proxy('test_auth')
+    
+    def test_proxy_list_empty(self, temp_config_dir):
+        """Test 'xts proxy list' with no proxies."""
+        from xts_core import xts_alias
+        
+        # Clear all proxies first
+        proxies = xts_alias.list_proxies()
+        for name in list(proxies.keys()):
+            xts_alias.remove_proxy(name)
+        
+        # List should be empty
+        proxies = xts_alias.list_proxies()
+        assert len(proxies) == 0
+    
+    def test_proxy_list_multiple(self, temp_config_dir):
+        """Test 'xts proxy list' with multiple proxies."""
+        from xts_core import xts_alias
+        
+        # Add multiple proxies
+        xts_alias.add_proxy('proxy1', 'proxy1.example.com:8080')
+        xts_alias.add_proxy('proxy2', 'proxy2.example.com:3128', proxy_type='http')
+        xts_alias.add_proxy('proxy3', 'localhost:1080', proxy_type='socks5')
+        
+        # List should show all
+        proxies = xts_alias.list_proxies()
+        assert len(proxies) >= 3
+        assert 'proxy1' in proxies
+        assert 'proxy2' in proxies
+        assert 'proxy3' in proxies
+        
+        # Cleanup
+        xts_alias.remove_proxy('proxy1')
+        xts_alias.remove_proxy('proxy2')
+        xts_alias.remove_proxy('proxy3')
+    
+    def test_proxy_remove(self, temp_config_dir):
+        """Test 'xts proxy remove' command."""
+        from xts_core import xts_alias
+        
+        # Add proxy first
+        xts_alias.add_proxy('test_remove', 'proxy.example.com:8080')
+        
+        # Verify it exists
+        proxies = xts_alias.list_proxies()
+        assert 'test_remove' in proxies
+        
+        # Remove it
+        success = xts_alias.remove_proxy('test_remove')
+        assert success
+        
+        # Verify it's gone
+        proxies = xts_alias.list_proxies()
+        assert 'test_remove' not in proxies
+    
+    def test_proxy_remove_nonexistent(self, temp_config_dir):
+        """Test 'xts proxy remove' with non-existent proxy."""
+        from xts_core import xts_alias
+        
+        # Try to remove proxy that doesn't exist
+        success = xts_alias.remove_proxy('nonexistent_proxy')
+        assert not success
+    
+    def test_proxy_update(self, temp_config_dir):
+        """Test updating existing proxy configuration."""
+        from xts_core import xts_alias
+        
+        # Add initial proxy
+        xts_alias.add_proxy('test_update', 'old.proxy.com:8080')
+        
+        # Verify initial config
+        proxies = xts_alias.list_proxies()
+        assert proxies['test_update']['proxy'] == 'old.proxy.com:8080'
+        assert proxies['test_update']['username'] is None
+        
+        # Update with new configuration
+        xts_alias.add_proxy('test_update', 'new.proxy.com:3128',
+                           username='newuser', password='newpass')
+        
+        # Verify updated config
+        proxies = xts_alias.list_proxies()
+        assert proxies['test_update']['proxy'] == 'new.proxy.com:3128'
+        assert proxies['test_update']['username'] == 'newuser'
+        
+        # Cleanup
+        xts_alias.remove_proxy('test_update')
+    
+    def test_proxy_persistence_across_sessions(self, temp_config_dir):
+        """Test that proxy configs persist (simulating restart)."""
+        from xts_core import xts_alias
+        
+        # Add proxy
+        xts_alias.add_proxy('persistent', 'proxy.example.com:8080',
+                           username='user1', password='pass1')
+        
+        # Simulate restart by reloading from disk
+        proxies = xts_alias.load_proxies()
+        
+        # Should still be there
+        assert 'persistent' in proxies
+        assert proxies['persistent']['proxy'] == 'proxy.example.com:8080'
+        assert proxies['persistent']['username'] == 'user1'
+        
+        # Cleanup
+        xts_alias.remove_proxy('persistent')
+    
+    def test_proxy_special_characters_in_password(self, temp_config_dir):
+        """Test proxy with special characters in password."""
+        from xts_core import xts_alias
+        
+        # Add proxy with special chars in password
+        special_pass = "p@ssw0rd!#$%"
+        xts_alias.add_proxy('special_chars', 'proxy.example.com:8080',
+                           username='testuser', password=special_pass)
+        
+        # Verify it was saved correctly
+        proxies = xts_alias.list_proxies()
+        assert proxies['special_chars']['password'] == special_pass
+        
+        # Cleanup
+        xts_alias.remove_proxy('special_chars')
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

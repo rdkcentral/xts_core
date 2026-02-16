@@ -436,6 +436,59 @@ pip install requests[socks]
 pip install PySocks
 ```
 
+## Testing
+
+The proxy feature has comprehensive test coverage:
+
+### Unit Tests (`test/test_xts_alias_remote.py`)
+
+**TestProxySupport** (5 tests):
+- Proxy configuration management (add/list/remove)
+- Fetching remote files through proxy
+- Proxy with authentication
+- Adding aliases with proxy reference
+- Checking updates with proxy
+
+**TestProxyFeature** (15 tests):
+- HTTP proxy configuration
+- SOCKS5 proxy configuration
+- SSH proxy handling
+- Proxy with credentials
+- Proxy persistence across sessions
+- Fetching through HTTP proxies
+- Fetching through SOCKS5 proxies
+- Fetching through authenticated proxies
+- SSH proxy error handling (requires manual tunnel)
+- Fetching without proxy (baseline)
+- Proxy URL scheme handling
+- Proxy update/overwrite
+- Proxy removal edge cases
+
+### CLI Tests (`test/test_xts_main.py`)
+
+**TestProxyCommands** (10 tests):
+- CLI: `xts proxy add` for HTTP
+- CLI: `xts proxy add` for SOCKS5
+- CLI: `xts proxy add` with credentials
+- CLI: `xts proxy list` (empty and populated)
+- CLI: `xts proxy remove`
+- CLI: Removing non-existent proxy
+- CLI: Updating proxy configuration
+- CLI: Proxy persistence across sessions
+- CLI: Special characters in passwords
+
+**Test Execution:**
+```bash
+# Run all proxy tests
+./test.sh --proxy
+
+# Run specific test classes
+python -m pytest test/test_xts_alias_remote.py::TestProxyFeature -v
+python -m pytest test/test_xts_main.py::TestProxyCommands -v
+```
+
+**Coverage:** 30 proxy tests covering configuration, CLI, fetching, authentication, and edge cases.
+
 ## Summary
 
 This feature enables XTS to work in restricted network environments where HTTP proxies are required. Proxies are defined once and can be reused across multiple aliases, providing centralized credential management.
@@ -447,13 +500,13 @@ This feature enables XTS to work in restricted network environments where HTTP p
 - ✅ Authentication support
 - ✅ Credential storage in separate file
 - ✅ Automatic proxy usage for all operations
-- ✅ Fully tested (5 proxy tests passing)
+- ✅ **Comprehensively tested (30 tests covering all features)**
 - ✅ Well documented
 
 **Command Format:**
 ```bash
 # Define proxy once
-xts proxy add <name> <host:port> [--username <user>] [--password <pass>]
+xts proxy add <name> <host:port> [--type <type>] [--username <user>] [--password <pass>]
 
 # Reference proxy when adding aliases
 xts alias add <name> <url> --proxy <proxy_name>

@@ -1,0 +1,627 @@
+#****************************************************************************
+# *
+# * If not stated otherwise in this file or this component's LICENSE file
+# * the following copyright and licenses apply:
+# *
+# * Copyright 2026 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *
+# * http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *
+#****************************************************************************
+
+# og - Operate on Git (multi-repo operations)
+#
+# Recursively discovers .git repositories below the current directory
+# and runs git operations across all of them.
+#
+# Quick Start:
+#   1. Install:       xts alias add og /path/to/og.xts
+#   2. List repos:    xts og remote
+#   3. All branches:  xts og branches
+#   4. Git status:    xts og status
+#   5. Run command:   xts og cmd "git pull"
+#
+# Common Options (available on most commands):
+#   -s, --search <pattern>     Filter output by grep pattern
+#   -d, --directory <pattern>  Only include repos matching directory pattern
+#   -n, --num <N>              Limit output to N lines per repo
+#   -l, --line                 Add blank line spacing between repos
+#   -v, --verbose              Extended output
+
+brief: "Multi-repo git operations - recursively operate on .git directories"
+alias_name: "og"
+
+command_groups:
+  info:
+    title: "Branch & Info"
+    description: "Discover and inspect repositories"
+    commands:
+      - branches
+      - branch
+      - current_branch
+      - remote
+      - url
+  operations:
+    title: "Operations"
+    description: "Run operations across repositories"
+    commands:
+      - status
+      - cmd
+  meta:
+    title: "Meta"
+    description: "Help and version"
+    commands:
+      - version
+      - help_commands
+
+version:
+  description: Show og version and build information
+  command: |
+    echo ""
+    echo "\033[1m\033[36m╔═══════════════════════════════════════╗\033[0m"
+    echo "\033[1m\033[36m║       og - Operate on Git             ║\033[0m"
+    echo "\033[1m\033[36m╚═══════════════════════════════════════╝\033[0m"
+    echo ""
+    echo "  \033[1mVersion:\033[0m  \033[1;33m2.0.0\033[0m (XTS edition)"
+    echo "  \033[1mOriginal:\033[0m \033[33m1.0.0\033[0m (2022-08-11)"
+    echo "  \033[1mFormat:\033[0m   .xts (installable via xts alias add)"
+    echo ""
+    echo "\033[2m  Run 'xts og help_commands' for usage\033[0m"
+    echo ""
+
+branches:
+  description: |
+    Display branch information across all git repos below current directory.
+    Branches are sorted by author date with color-coded columns.
+
+    Usage: xts og branches [options]
+
+    Options:
+      -s, --search <pattern>     Filter branches by pattern
+      -d, --directory <pattern>  Only include repos matching directory pattern
+      -n, --num <N>              Limit to N lines per repo
+      -l, --line                 Add spacing between repos
+
+    Examples:
+      xts og branches
+      xts og branches -s feature
+      xts og branches -d myproject -n 5
+  command: |
+    set -- $@
+    S="" D="" N="" L=0
+    while [ $# -gt 0 ]; do case "$1" in
+      -s|--search) S="$2"; shift 2;; -d|--directory) D="$2"; shift 2;;
+      -n|--num) N="$2"; shift 2;; -l|--line) L=1; shift;; *) shift;;
+    esac; done
+
+    _TMPF=$(mktemp)
+    trap "rm -f $_TMPF" EXIT
+    (find "$PWD" -type d -name '.git' -exec dirname {} \; 2>/dev/null
+     find "$PWD" -type l -name '.git' -exec dirname {} \; 2>/dev/null) | sort -u > "$_TMPF"
+    REPO_COUNT=$(wc -l < "$_TMPF" | tr -d ' ')
+
+    if [ "$REPO_COUNT" = "0" ]; then
+      echo "\033[93mNo git repos found below $PWD\033[0m"
+      exit 0
+    fi
+
+    echo ""
+    echo "\033[1m\033[96m  Branches\033[0m \033[2m(${REPO_COUNT} repos below $PWD)\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    SHOWN=0
+    while IFS= read -r repo; do
+      [ -n "$D" ] && ! echo "$repo" | grep -qi "$D" && continue
+      echo "\033[1;32m  ▸ ${repo}\033[0m"
+      cd "$repo" 2>/dev/null || continue
+
+      OUTPUT=$(git branch --all --sort=authordate \
+        --format="%(authordate:relative);%(authorname);%(refname:short)" \
+        2>/dev/null | column -s ";" -t)
+
+      [ -n "$S" ] && OUTPUT=$(echo "$OUTPUT" | grep -i "$S")
+      [ -n "$N" ] && OUTPUT=$(echo "$OUTPUT" | head -n "$N")
+      if [ -n "$OUTPUT" ]; then
+        echo "$OUTPUT" | sed 's/^/    /'
+      fi
+      SHOWN=$((SHOWN + 1))
+      [ "$L" = "1" ] && echo
+    done < "$_TMPF"
+
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "\033[2m  ${SHOWN} repos displayed\033[0m"
+    echo ""
+  params:
+    passthrough: true
+
+branch:
+  description: |
+    Display branch information for the current directory only.
+
+    Usage: xts og branch [options]
+
+    Options:
+      -s, --search <pattern>  Filter branches by pattern
+      -n, --num <N>           Limit to N lines
+
+    Examples:
+      xts og branch
+      xts og branch -s feature
+      xts og branch -n 10
+  command: |
+    set -- $@
+    S="" N=""
+    while [ $# -gt 0 ]; do case "$1" in
+      -s|--search) S="$2"; shift 2;; -n|--num) N="$2"; shift 2;; *) shift;;
+    esac; done
+
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+      echo "\033[91mNot a git repository\033[0m"
+      exit 1
+    fi
+
+    REPO_NAME=$(basename "$(git rev-parse --show-toplevel 2>/dev/null)")
+    CURRENT=$(git branch --show-current 2>/dev/null)
+
+    echo ""
+    echo "\033[1m\033[96m  Branches\033[0m \033[2m(${REPO_NAME})\033[0m  \033[36mcurrent: ${CURRENT}\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    OUTPUT=$(git branch --all --sort=authordate \
+      --format="%(authordate:relative);%(authorname);%(refname:short)" \
+      2>/dev/null | column -s ";" -t)
+
+    [ -n "$S" ] && OUTPUT=$(echo "$OUTPUT" | grep -i "$S")
+    [ -n "$N" ] && OUTPUT=$(echo "$OUTPUT" | head -n "$N")
+    echo "$OUTPUT" | sed 's/^/    /'
+    echo ""
+  params:
+    passthrough: true
+
+current_branch:
+  description: |
+    Show current branch name. With -v, shows one-line commit log.
+
+    Usage: xts og current_branch [-v]
+
+    Examples:
+      xts og current_branch
+      xts og current_branch -v
+  command: |
+    set -- $@
+    if ! git rev-parse --git-dir >/dev/null 2>&1; then
+      echo "\033[91mNot a git repository\033[0m"
+      exit 1
+    fi
+    if [ "$1" = "-v" ] || [ "$1" = "--verbose" ]; then
+      BRANCH=$(git branch --show-current 2>/dev/null)
+      echo "\033[1m\033[36m${BRANCH}\033[0m"
+      git log -1 --oneline | sed 's/^/  /'
+    else
+      git branch --show-current
+    fi
+  params:
+    passthrough: true
+
+remote:
+  description: |
+    Display git remotes for all repos below current directory.
+
+    Usage: xts og remote [options]
+
+    Options:
+      -d, --directory <pattern>  Only include repos matching pattern
+      -l, --line                 Add spacing between repos
+
+    Examples:
+      xts og remote
+      xts og remote -d myproject
+  command: |
+    set -- $@
+    D="" L=0
+    while [ $# -gt 0 ]; do case "$1" in
+      -d|--directory) D="$2"; shift 2;; -l|--line) L=1; shift;; *) shift;;
+    esac; done
+
+    _TMPF=$(mktemp)
+    trap "rm -f $_TMPF" EXIT
+    (find "$PWD" -type d -name '.git' -exec dirname {} \; 2>/dev/null
+     find "$PWD" -type l -name '.git' -exec dirname {} \; 2>/dev/null) | sort -u > "$_TMPF"
+    REPO_COUNT=$(wc -l < "$_TMPF" | tr -d ' ')
+
+    if [ "$REPO_COUNT" = "0" ]; then
+      echo "\033[93mNo git repos found below $PWD\033[0m"
+      exit 0
+    fi
+
+    echo ""
+    echo "\033[1m\033[96m  Remotes\033[0m \033[2m(${REPO_COUNT} repos below $PWD)\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    SHOWN=0
+    while IFS= read -r repo; do
+      [ -n "$D" ] && ! echo "$repo" | grep -qi "$D" && continue
+      REPO_NAME=$(basename "$repo")
+      REMOTE_LINE=$(cd "$repo" && git remote -vv 2>/dev/null | head -n1)
+      if [ -n "$REMOTE_LINE" ]; then
+        REMOTE_URL=$(echo "$REMOTE_LINE" | awk '{print $2}')
+        echo "\033[1;32m  ▸ ${REPO_NAME}\033[0m"
+        echo "    \033[33m${REMOTE_URL}\033[0m"
+      else
+        echo "\033[1;32m  ▸ ${REPO_NAME}\033[0m"
+        echo "    \033[2m(no remote)\033[0m"
+      fi
+      SHOWN=$((SHOWN + 1))
+      [ "$L" = "1" ] && echo
+    done < "$_TMPF"
+
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "\033[2m  ${SHOWN} repos displayed\033[0m"
+    echo ""
+  params:
+    passthrough: true
+
+url:
+  description: |
+    Get clickable HTTPS URL for git repos or specific files.
+    Converts SSH remotes to HTTPS. Supports GitHub and GitLab.
+
+    Without arguments, shows URLs for all repos below current directory.
+    With a path argument, generates the exact URL for that file or directory.
+
+    Usage:
+      xts og url                    Show URLs for all repos
+      xts og url <path>             URL for specific file or directory
+      xts og url -d <pattern>       Filter repos by pattern
+
+    Examples:
+      xts og url
+      xts og url src/main.py
+      xts og url -d myproject
+
+    Supports: GitHub, GitLab, Bitbucket (SSH and HTTPS remotes)
+  command: |
+    set -- $@
+    D="" PATH_ARG=""
+    while [ $# -gt 0 ]; do case "$1" in
+      -d|--directory) D="$2"; shift 2;; -l|--line) shift;; -v|--verbose) shift;;
+      -*) shift;; *) PATH_ARG="$1"; shift;;
+    esac; done
+
+    _remote_to_https() {
+      _r="$1"
+      if echo "$_r" | grep -q "^http"; then
+        echo "$_r" | sed 's/\.git$//'
+      else
+        _host=$(echo "$_r" | sed -E 's|.*@([^:/]+)[:/].*|\1|')
+        _rpath=$(echo "$_r" | sed -E 's|.*@[^:/]+[:/](.+)$|\1|' | sed 's/\.git$//')
+        echo "https://${_host}/${_rpath}"
+      fi
+    }
+
+    _make_url() {
+      _target="${1:-.}"
+
+      if [ -f "$_target" ]; then
+        _dir=$(dirname "$(realpath "$_target")")
+        _file_part=$(basename "$_target")
+      elif [ -d "$_target" ]; then
+        _dir=$(realpath "$_target")
+        _file_part=""
+      else
+        echo "\033[91m  Path not found: $_target\033[0m"
+        return 1
+      fi
+
+      _orig_dir="$PWD"
+      cd "$_dir" 2>/dev/null || return 1
+
+      if ! git rev-parse --git-dir >/dev/null 2>&1; then
+        echo "\033[91m  ${_dir} is not in a git repository\033[0m"
+        cd "$_orig_dir"
+        return 1
+      fi
+
+      _remote=$(git remote -vv 2>/dev/null | head -n1 | awk '{print $2}')
+      if [ -z "$_remote" ]; then
+        cd "$_orig_dir"
+        return 1
+      fi
+
+      _base_url=$(_remote_to_https "$_remote")
+
+      _ref=$(git symbolic-ref --short HEAD 2>/dev/null)
+      if [ -z "$_ref" ]; then
+        _ref=$(git describe --exact-match --tags 2>/dev/null || git rev-parse HEAD 2>/dev/null)
+      fi
+
+      _is_github=$(echo "$_base_url" | grep -c "github" || true)
+      if [ -n "$_file_part" ]; then
+        [ "$_is_github" -gt 0 ] && _prefix="blob" || _prefix="-/blob"
+      else
+        [ "$_is_github" -gt 0 ] && _prefix="tree" || _prefix="-/tree"
+      fi
+
+      _rel_path=$(git rev-parse --show-prefix 2>/dev/null)
+      _full_url="${_base_url}/${_prefix}/${_ref}/${_rel_path}${_file_part}"
+
+      echo "    \033[33m${_remote}\033[0m \033[36m(${_ref})\033[0m"
+      echo "    \033[2m→\033[0m \033[4m${_full_url}\033[0m"
+
+      cd "$_orig_dir"
+    }
+
+    # Mode 1: specific path
+    if [ -n "$PATH_ARG" ]; then
+      echo ""
+      _make_url "$PATH_ARG"
+      echo ""
+      exit $?
+    fi
+
+    # Mode 2: all repos
+    _TMPF=$(mktemp)
+    trap "rm -f $_TMPF" EXIT
+    (find "$PWD" -type d -name '.git' -exec dirname {} \; 2>/dev/null
+     find "$PWD" -type l -name '.git' -exec dirname {} \; 2>/dev/null) | sort -u > "$_TMPF"
+    REPO_COUNT=$(wc -l < "$_TMPF" | tr -d ' ')
+
+    if [ "$REPO_COUNT" = "0" ]; then
+      echo "\033[93mNo git repos found below $PWD\033[0m"
+      exit 0
+    fi
+
+    echo ""
+    echo "\033[1m\033[96m  URLs\033[0m \033[2m(${REPO_COUNT} repos below $PWD)\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    SHOWN=0
+    while IFS= read -r repo; do
+      [ -n "$D" ] && ! echo "$repo" | grep -qi "$D" && continue
+      echo "\033[1;32m  ▸ $(basename "$repo")\033[0m"
+      _make_url "$repo"
+      SHOWN=$((SHOWN + 1))
+    done < "$_TMPF"
+
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "\033[2m  ${SHOWN} repos displayed\033[0m"
+    echo ""
+  params:
+    passthrough: true
+
+status:
+  description: |
+    Git status across all repos with clickable URL display.
+
+    Usage: xts og status [options]
+
+    Options:
+      -d, --directory <pattern>  Only include repos matching pattern
+      -l, --line                 Add spacing between repos
+      -s, --search <pattern>     Filter status output by pattern
+
+    Examples:
+      xts og status
+      xts og status -d myproject
+      xts og status -s modified
+  command: |
+    set -- $@
+    D="" L=0 S=""
+    while [ $# -gt 0 ]; do case "$1" in
+      -d|--directory) D="$2"; shift 2;; -l|--line) L=1; shift;;
+      -s|--search) S="$2"; shift 2;; *) shift;;
+    esac; done
+
+    _remote_to_https() {
+      _r="$1"
+      if echo "$_r" | grep -q "^http"; then
+        echo "$_r" | sed 's/\.git$//'
+      else
+        _host=$(echo "$_r" | sed -E 's|.*@([^:/]+)[:/].*|\1|')
+        _rpath=$(echo "$_r" | sed -E 's|.*@[^:/]+[:/](.+)$|\1|' | sed 's/\.git$//')
+        echo "https://${_host}/${_rpath}"
+      fi
+    }
+
+    _show_url() {
+      _remote=$(git remote -vv 2>/dev/null | head -n1 | awk '{print $2}')
+      [ -z "$_remote" ] && return
+      _base_url=$(_remote_to_https "$_remote")
+      _branch=$(git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
+      echo "    \033[33m${_remote}\033[0m \033[36m(${_branch})\033[0m \033[2m→\033[0m \033[4m${_base_url}\033[0m"
+    }
+
+    _TMPF=$(mktemp)
+    trap "rm -f $_TMPF" EXIT
+    (find "$PWD" -type d -name '.git' -exec dirname {} \; 2>/dev/null
+     find "$PWD" -type l -name '.git' -exec dirname {} \; 2>/dev/null) | sort -u > "$_TMPF"
+    REPO_COUNT=$(wc -l < "$_TMPF" | tr -d ' ')
+
+    if [ "$REPO_COUNT" = "0" ]; then
+      echo "\033[93mNo git repos found below $PWD\033[0m"
+      exit 0
+    fi
+
+    echo ""
+    echo "\033[1m\033[96m  Status\033[0m \033[2m(${REPO_COUNT} repos below $PWD)\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    DIRTY=0
+    CLEAN=0
+
+    while IFS= read -r repo; do
+      [ -n "$D" ] && ! echo "$repo" | grep -qi "$D" && continue
+      REPO_NAME=$(basename "$repo")
+      cd "$repo" 2>/dev/null || continue
+
+      STATUS_OUT=$(git status --short 2>/dev/null)
+      if [ -z "$STATUS_OUT" ]; then
+        echo "\033[1;32m  ▸ ${REPO_NAME}\033[0m  \033[92m✓ clean\033[0m"
+        CLEAN=$((CLEAN + 1))
+      else
+        echo "\033[1;33m  ▸ ${REPO_NAME}\033[0m  \033[93m✗ dirty\033[0m"
+        _show_url
+        if [ -n "$S" ]; then
+          STATUS_OUT=$(echo "$STATUS_OUT" | grep -i "$S")
+        fi
+        echo "$STATUS_OUT" | sed 's/^/    /'
+        DIRTY=$((DIRTY + 1))
+      fi
+
+      [ "$L" = "1" ] && echo
+    done < "$_TMPF"
+
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "  \033[1mSummary:\033[0m \033[92m${CLEAN} clean\033[0m, \033[93m${DIRTY} dirty\033[0m  \033[2m(${REPO_COUNT} repos)\033[0m"
+    echo ""
+  params:
+    passthrough: true
+
+cmd:
+  description: |
+    Run an arbitrary command across all git repos.
+
+    Usage: xts og cmd "<command>" [options]
+
+    Options:
+      -d, --directory <pattern>  Only include repos matching pattern
+      -n, --num <N>              Limit output to N lines per repo
+      -l, --line                 Add spacing between repos
+
+    Examples:
+      xts og cmd "git pull"
+      xts og cmd "git log --oneline -5"
+      xts og cmd "wc -l *.py" -d myproject
+      xts og cmd "git fetch --prune" -l
+  command: |
+    set -- $@
+    CMD="" D="" N="" L=0
+    while [ $# -gt 0 ]; do case "$1" in
+      -d|--directory) D="$2"; shift 2;; -n|--num) N="$2"; shift 2;;
+      -l|--line) L=1; shift;; -v|--verbose) shift;;
+      -*) shift;; *) [ -z "$CMD" ] && CMD="$1" || CMD="$CMD $1"; shift;;
+    esac; done
+
+    if [ -z "$CMD" ]; then
+      echo ""
+      echo "\033[91m  Command required\033[0m"
+      echo ""
+      echo "  \033[1mUsage:\033[0m xts og cmd \"<command>\" [options]"
+      echo ""
+      echo "  \033[1mExamples:\033[0m"
+      echo "    xts og cmd \"git pull\""
+      echo "    xts og cmd \"git log --oneline -3\""
+      echo "    xts og cmd \"git fetch --prune\" -l"
+      echo ""
+      exit 1
+    fi
+
+    _TMPF=$(mktemp)
+    trap "rm -f $_TMPF" EXIT
+    (find "$PWD" -type d -name '.git' -exec dirname {} \; 2>/dev/null
+     find "$PWD" -type l -name '.git' -exec dirname {} \; 2>/dev/null) | sort -u > "$_TMPF"
+    REPO_COUNT=$(wc -l < "$_TMPF" | tr -d ' ')
+
+    if [ "$REPO_COUNT" = "0" ]; then
+      echo "\033[93mNo git repos found below $PWD\033[0m"
+      exit 0
+    fi
+
+    echo ""
+    echo "\033[1m\033[96m  cmd:\033[0m \033[33m${CMD}\033[0m \033[2m(${REPO_COUNT} repos)\033[0m"
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo ""
+
+    FAIL=0
+    OK=0
+
+    while IFS= read -r repo; do
+      [ -n "$D" ] && ! echo "$repo" | grep -qi "$D" && continue
+      REPO_NAME=$(basename "$repo")
+      echo "\033[1;32m  ▸ ${REPO_NAME}\033[0m"
+      cd "$repo" 2>/dev/null || continue
+
+      if [ -n "$N" ]; then
+        eval "$CMD" 2>&1 | head -n "$N" | sed 's/^/    /'
+      else
+        eval "$CMD" 2>&1 | sed 's/^/    /'
+      fi
+
+      LAST_EXIT=$?
+      if [ "$LAST_EXIT" -eq 0 ]; then
+        OK=$((OK + 1))
+      else
+        FAIL=$((FAIL + 1))
+      fi
+
+      [ "$L" = "1" ] && echo
+    done < "$_TMPF"
+
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "  \033[1mResult:\033[0m \033[92m${OK} ok\033[0m, \033[91m${FAIL} failed\033[0m  \033[2m(${REPO_COUNT} repos)\033[0m"
+    echo ""
+  params:
+    passthrough: true
+
+help_commands:
+  description: |
+    Show command catalog with descriptions.
+
+    Usage: xts og help_commands
+  command: |
+    echo ""
+    echo "\033[1m\033[36m╔═══════════════════════════════════════╗\033[0m"
+    echo "\033[1m\033[36m║       og - Operate on Git             ║\033[0m"
+    echo "\033[1m\033[36m╚═══════════════════════════════════════╝\033[0m"
+    echo ""
+    echo "\033[2m  Recursively operate on .git directories below current path\033[0m"
+    echo ""
+    echo "  \033[1musage:\033[0m xts og <command> [options]"
+    echo ""
+    echo "\033[1m\033[33m  branch & info:\033[0m"
+    echo "\033[2m    Discover and inspect repositories\033[0m"
+    echo ""
+    echo "    \033[1;32mbranches              \033[0m Display branches across all repos (sorted by date)"
+    echo "    \033[1;32mbranch                \033[0m Display branches for current directory only"
+    echo "    \033[1;32mcurrent_branch        \033[0m Show current branch name (-v for commit log)"
+    echo "    \033[1;32mremote                \033[0m Display git remotes for all repos"
+    echo "    \033[1;32murl                   \033[0m Get clickable HTTPS URLs (SSH conversion)"
+    echo ""
+    echo "\033[1m\033[33m  operations:\033[0m"
+    echo "\033[2m    Run operations across repositories\033[0m"
+    echo ""
+    echo "    \033[1;32mstatus                \033[0m Git status across all repos with URLs"
+    echo "    \033[1;32mcmd \"<command>\"        \033[0m Run arbitrary command across all repos"
+    echo ""
+    echo "\033[1m\033[33m  common options:\033[0m"
+    echo ""
+    echo "    \033[1;32m-s, --search <pat>    \033[0m Filter output by grep pattern"
+    echo "    \033[1;32m-d, --directory <pat>  \033[0m Only include repos matching directory pattern"
+    echo "    \033[1;32m-n, --num <N>         \033[0m Limit output to N lines per repo"
+    echo "    \033[1;32m-l, --line            \033[0m Add blank line spacing between repos"
+    echo "    \033[1;32m-v, --verbose         \033[0m Extended output"
+    echo ""
+    echo "\033[96m  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo "\033[2m  Install: xts alias add og /path/to/og.xts\033[0m"
+    echo ""

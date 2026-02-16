@@ -20,7 +20,7 @@ echo "Running tests..."
 echo
 
 # Run tests with coverage
-pytest test_xts_alias_enhanced.py test_xts_validator.py test_xts_allocator_client.py test_xts_main.py test_xts_alias_remote.py test_xts_tools_plugin.py test_standard_functions.py \
+pytest test_xts_alias_enhanced.py test_xts_validator.py test_xts_allocator_client.py test_xts_main.py test_xts_alias_remote.py test_xts_tools_plugin.py test_standard_functions.py test_og.py \
     -v \
     --tb=short \
     --cov=../src/xts_core \

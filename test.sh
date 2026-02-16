@@ -26,7 +26,7 @@ case "${1:-}" in
         TEST_FILTER="test/test_xts_alias_remote.py"
         ;;
     --proxy)
-        TEST_FILTER="test/test_xts_alias_remote.py::TestProxySupport test/test_xts_alias_remote.py::TestProxyFeature"
+        TEST_FILTER="test/test_xts_alias_remote.py::TestProxySupport test/test_xts_alias_remote.py::TestProxyFeature test/test_xts_main.py::TestProxyCommands"
         ;;
     --alias)
         TEST_FILTER="test/test_xts_alias*.py"
