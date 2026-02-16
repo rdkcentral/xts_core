@@ -29,7 +29,7 @@ _xts_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main xts commands
-    opts="alias"
+    opts="alias guide manual validate create edit functions"
     
     # Get aliases from ~/.xts/aliases.json
     if [ -f ~/.xts/aliases.json ]; then
@@ -69,6 +69,21 @@ _xts_completion() {
                     COMPREPLY=( $(compgen -W "add list remove refresh clean" -- ${cur}) )
                     return 0
                     ;;
+                guide)
+                    # xts guide <module>
+                    COMPREPLY=( $(compgen -W "basics commands func structure aliases tools advanced quickref" -- ${cur}) )
+                    return 0
+                    ;;
+                validate|create|edit)
+                    # xts validate/create/edit <file>
+                    COMPREPLY=( $(compgen -f -X '!*.xts' -- ${cur}) )
+                    return 0
+                    ;;
+                functions)
+                    # xts functions <subcommand>
+                    COMPREPLY=( $(compgen -W "list show" -- ${cur}) )
+                    return 0
+                    ;;
                 *)
                     # After an alias name, get commands from that alias's .xts file
                     if [[ " $aliases " =~ " ${prev} " ]]; then
@@ -94,6 +109,18 @@ _xts_completion() {
                     local remove_aliases=$(grep -o '"[^"]*"[[:space:]]*:' ~/.xts/aliases.json | sed 's/"//g' | sed 's/[[:space:]]*://g' | tr '\n' ' ')
                     COMPREPLY=( $(compgen -W "${remove_aliases}" -- ${cur}) )
                 fi
+                return 0
+            elif [ "$prev2" = "guide" ]; then
+                # xts guide <module> <lesson> - nested lesson completions
+                case "${prev}" in
+                    basics) COMPREPLY=( $(compgen -W "what first running help" -- ${cur}) ) ;;
+                    commands) COMPREPLY=( $(compgen -W "simple multiline lists args options" -- ${cur}) ) ;;
+                    func) COMPREPLY=( $(compgen -W "define stdlib usage" -- ${cur}) ) ;;
+                    structure) COMPREPLY=( $(compgen -W "metadata groups nesting changelog" -- ${cur}) ) ;;
+                    aliases) COMPREPLY=( $(compgen -W "add manage remote" -- ${cur}) ) ;;
+                    tools) COMPREPLY=( $(compgen -W "validate create functions_cmd" -- ${cur}) ) ;;
+                    advanced) COMPREPLY=( $(compgen -W "proxy yaml_runner tips" -- ${cur}) ) ;;
+                esac
                 return 0
             elif [[ " $aliases " =~ " ${prev2} " ]]; then
                 # After alias and its command, don't suggest anything (let xts handle it)

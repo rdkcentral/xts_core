@@ -12,6 +12,9 @@ include = ["xts_core", "xts_core.plugins"]
 where = ["src"]
 namespaces = false
 
+[tool.setuptools.package-data]
+"xts_core" = ["data/*.xts"]
+
 [project.scripts]
 xts-install = "xts_core.install:main"
 xts = "xts_core.xts:main"

@@ -27,6 +27,10 @@ By enabling users to define command groups and actions in .xts files, XTS brings
   * [Finally try a list command](#finally-try-a-list-command)
   * [Try the remaining commands](#try-the-remaining-commands)
   * [Write a custom .xts file](#write-a-custom-.xts-file)
+* [Learning XTS](#learning-xts)
+  * [Interactive Tutorial](#interactive-tutorial)
+  * [Built-in Manual](#built-in-manual)
+* [How It Works](#how-it-works)
 * [Contributing](#contributing)
 * [License](#license)
 </details>
@@ -65,7 +69,7 @@ XTS currently discovers commands from .xts files located in your **current worki
 
 #### Planned Features
 
-- **Planned Remote Config Support**: In upcoming versions, XTS will introduce the ability to use XTS config files hosted in remote locations.
+- **Remote Config Support**: XTS supports `.xts` files hosted on remote HTTP/HTTPS URLs and GitHub repositories. See [Working with Aliases](#working-with-aliases) for details.
 
 ## Use Cases
 
@@ -188,7 +192,75 @@ xts alias refresh demo
 ### Write a custom .xts file
 Any file with the extension `.xts` will be picked up by the tool. Therefore, creating a file with this extension and filling it with valid command definitions will create a custom `.xts` file.
 
-XTS is based on the yaml_runner library and follows it command definition structure. Find out more about this [here]()
+XTS is based on the [yaml_runner](https://github.com/rdkcentral/yaml_runner) library and follows its command definition structure. Key yaml_runner concepts used by XTS include hierarchical command dispatch, passthrough arguments (`$@` substitution), and fail-fast execution.
+
+## Learning XTS
+
+XTS includes built-in learning resources accessible directly from the command line.
+
+### Interactive Tutorial
+
+The `xts guide` command provides a progressive, hands-on tutorial system covering everything from basics to advanced topics:
+
+```bash
+# Start the tutorial
+xts guide
+
+# Browse specific modules
+xts guide basics         # XTS fundamentals
+xts guide commands       # Command definitions (simple, multiline, lists, args, options)
+xts guide func           # Functions system (define, stdlib, usage)
+xts guide structure      # .xts file structure (metadata, groups, nesting)
+xts guide aliases        # Alias management (add, manage, remote)
+xts guide tools          # Built-in tools (validate, create, functions)
+xts guide advanced       # Advanced topics (proxy, yaml_runner, tips)
+xts guide quickref       # Quick reference card
+
+# Dive into specific lessons
+xts guide basics first   # Your first .xts file
+xts guide commands args  # Arguments and passthrough
+```
+
+### Built-in Manual
+
+The `xts manual` command displays a feature summary with links to detailed markdown documentation:
+
+```bash
+xts manual   # Feature overview and documentation index
+```
+
+For in-depth documentation, refer to the markdown files in the repository:
+
+| Document | Description |
+| -------- | ----------- |
+| `README.md` | Overview, installation, getting started |
+| `CHANGELOG.md` | Version history and release notes |
+| `COMMAND_HISTORY.md` | Command recall and history features |
+| `CONTRIBUTING.md` | Contribution guidelines |
+| `docs/TAB_COMPLETION.md` | Bash tab completion setup and usage |
+| `docs/install_command.md` | Installation command specification |
+| `docs/PROXY_FEATURE.md` | Proxy support for remote aliases |
+| `docs/REPO_ANALYZER.md` | Repository analyzer tool |
+| `docs/HTTP_ANALYSIS.md` | HTTP remote repository analysis |
+
+### Other Built-in Tools
+
+```bash
+xts validate myconfig.xts     # Validate .xts file schema and syntax
+xts create newproject.xts      # Interactive wizard to create .xts files
+xts functions list             # List standard library functions
+xts functions show format_json # Show function details
+```
+
+## How It Works
+
+XTS is built on the [yaml_runner](https://github.com/rdkcentral/yaml_runner) library, which handles YAML parsing and command execution. When you run an `xts` command:
+
+1. **Configuration Loading** - XTS loads the `.xts` file (YAML format) and extracts command sections
+2. **Function Injection** - Standard library functions (13 built-in formatters like `format_json`, `highlight_errors`) are merged with any user-defined functions
+3. **Command Dispatch** - yaml_runner's hierarchical dispatch routes the command path (e.g., `xts myalias db backup`) to the correct nested command definition
+4. **Argument Passthrough** - Commands with `passthrough: true` receive CLI arguments via `$@` substitution in the command string
+5. **Execution** - Commands run in `/bin/sh` with fail-fast semantics (command lists stop on first failure)
 
 ## Contributing
 

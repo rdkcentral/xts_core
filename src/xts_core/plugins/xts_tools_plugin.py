@@ -28,6 +28,8 @@ Provides:
 - create: Interactive wizard to create new .xts files
 - edit: Interactive editor for existing .xts files
 - functions: List and inspect standard library functions
+- guide: Interactive training system for learning XTS
+- manual: Feature summary with links to documentation
 """
 
 import sys
@@ -51,7 +53,7 @@ class XTSToolsPlugin(Plugin):
     def __init__(self):
         """Initialize the tools plugin."""
         super().__init__()
-        self.provided_positionals = ['validate', 'create', 'edit', 'functions']
+        self.provided_positionals = ['validate', 'create', 'edit', 'functions', 'guide', 'manual']
         self.provided_args = []  # No args, only positionals
     
     def run(self, args: list):
@@ -74,6 +76,10 @@ class XTSToolsPlugin(Plugin):
             self._edit(args[1:])
         elif command == 'functions':
             self._functions_cmd(args[1:])
+        elif command == 'guide':
+            self._guide(args[1:])
+        elif command == 'manual':
+            self._manual(args[1:])
         else:
             error(f"Unknown tools command: {command}")
             self._print_help()
@@ -95,6 +101,12 @@ class XTSToolsPlugin(Plugin):
         print("                       list: Show all standard functions")
         print("                       show <name>: Show function details")
         print()
+        print("  guide [topic]        Interactive XTS training system")
+        print("                       Topics: basics, commands, func, structure,")
+        print("                       aliases, tools, advanced, quickref")
+        print()
+        print("  manual               Feature summary with links to documentation")
+        print()
         print("Examples:")
         print("  xts validate myconfig.xts")
         print("  xts validate myconfig.xts -v")
@@ -103,6 +115,9 @@ class XTSToolsPlugin(Plugin):
         print("  xts create newproject --resume  # Resume after CTRL-C")
         print("  xts functions list")
         print("  xts functions show format_json")
+        print("  xts guide                       # Start interactive tutorial")
+        print("  xts guide basics first          # Your first .xts file")
+        print("  xts manual                      # Feature summary and docs")
         print()
     
     def _validate(self, args: list):
@@ -219,4 +234,136 @@ class XTSToolsPlugin(Plugin):
         console.print(f"  [dim]Command:[/dim]     [green]{func['command']}[/green]")
         console.print(f"\n  [dim]Usage in .xts file:[/dim]")
         console.print(f"    [cyan]command: some_cmd | {{{{{name}}}}}[/cyan]")
+        console.print()
+
+    def _guide(self, args: list):
+        """Run the interactive XTS guide system.
+
+        Loads the bundled guide.xts file and runs it through YamlRunner.
+        Defaults to 'welcome' when no arguments are provided.
+        """
+        import yaml
+        try:
+            from yaml import CSafeLoader as SafeLoader
+        except ImportError:
+            from yaml import SafeLoader
+        from yaml_runner import YamlRunner
+
+        # Locate bundled guide.xts
+        guide_path = Path(__file__).resolve().parent.parent / "data" / "guide.xts"
+
+        if not guide_path.exists():
+            error(f"Guide data not found: {guide_path}")
+            sys.exit(1)
+
+        # Load and parse
+        with open(guide_path, 'r', encoding='utf-8') as f:
+            config = yaml.load(f, SafeLoader)
+
+        # Filter metadata keys to get command sections
+        _METADATA_KEYS = {'brief', 'schema_version', 'version', 'changelog', 'command_groups'}
+        command_sections = {}
+        for key, value in config.items():
+            if key not in _METADATA_KEYS and isinstance(value, dict):
+                command_sections[key] = value
+
+        # Inject standard functions
+        try:
+            from ..standard_functions import get_standard_functions
+        except ImportError:
+            from xts_core.standard_functions import get_standard_functions
+
+        std = get_standard_functions()
+        std.update(config.get('functions', {}))
+        command_sections['functions'] = std
+
+        # Default to 'welcome' when no args provided
+        if not args:
+            args = ['welcome']
+
+        # Run through YamlRunner
+        try:
+            yaml_runner = YamlRunner(
+                command_sections,
+                program='xts guide',
+                hierarchical=True,
+                fail_fast=True
+            )
+            _, _, exit_codes = yaml_runner.run(args)
+            sys.exit(sorted(exit_codes)[-1])
+        except SystemExit:
+            raise
+        except Exception as e:
+            error(f'Guide system error: {e}')
+            sys.exit(1)
+
+    def _manual(self, args: list):
+        """Display XTS feature summary with links to documentation."""
+        from rich.console import Console
+        from rich.panel import Panel
+        from rich.text import Text
+
+        console = Console()
+
+        header = Text()
+        header.append("XTS Manual", style="bold cyan")
+        header.append("  Feature Summary & Documentation", style="dim")
+        console.print(Panel(header, border_style="cyan", padding=(0, 1)))
+
+        console.print()
+        console.print("[bold]XTS[/bold] is a flexible command orchestration system that transforms")
+        console.print("YAML files into powerful, self-documenting CLI tools.\n")
+
+        # Features
+        console.print("[bold yellow]Core Features:[/bold yellow]")
+        features = [
+            ("YAML Configuration", "Define commands in portable, version-controlled .xts files"),
+            ("Alias System", "Register .xts files as named aliases for quick access"),
+            ("Remote Sources", "Install .xts files from HTTP URLs and GitHub repositories"),
+            ("Hierarchical Commands", "Organize commands in nested groups (xts alias db backup)"),
+            ("Passthrough Arguments", "Pass CLI args to commands via $@ substitution"),
+            ("Standard Functions", "13 built-in formatters (format_json, highlight_errors, ...)"),
+            ("Interactive Wizard", "Create .xts files with guided prompts (xts create)"),
+            ("Schema Validation", "Validate .xts files for correctness (xts validate)"),
+            ("Tab Completion", "Bash completion for commands, aliases, and subcommands"),
+            ("Proxy Support", "Corporate proxy configuration for remote aliases"),
+        ]
+        for name, desc in features:
+            console.print(f"  [bold green]{name:<25}[/bold green] [dim]{desc}[/dim]")
+
+        console.print()
+        console.print("[bold yellow]Built-in Commands:[/bold yellow]")
+        commands = [
+            ("xts guide", "Interactive tutorial with progressive lessons"),
+            ("xts validate <file>", "Validate .xts file schema and syntax"),
+            ("xts create <file>", "Interactive wizard to create .xts files"),
+            ("xts edit <file>", "Interactive editor for existing .xts files"),
+            ("xts functions list", "List standard library functions"),
+            ("xts alias add|list|remove", "Manage aliases"),
+        ]
+        for cmd, desc in commands:
+            console.print(f"  [bold cyan]{cmd:<28}[/bold cyan] [dim]{desc}[/dim]")
+
+        # Documentation links
+        console.print()
+        console.print("[bold yellow]Documentation:[/bold yellow]")
+        docs = [
+            ("README.md", "Overview, installation, getting started"),
+            ("CHANGELOG.md", "Version history and release notes"),
+            ("COMMAND_HISTORY.md", "Command recall and history features"),
+            ("CONTRIBUTING.md", "Contribution guidelines"),
+            ("docs/TAB_COMPLETION.md", "Bash tab completion setup and usage"),
+            ("docs/install_command.md", "Installation command specification"),
+            ("docs/PROXY_FEATURE.md", "Proxy support for remote aliases"),
+            ("docs/REPO_ANALYZER.md", "Repository analyzer tool"),
+            ("docs/HTTP_ANALYSIS.md", "HTTP remote repository analysis"),
+            ("docs/test_documentation.md", "Test specification and coverage"),
+            ("examples/proxy_example.md", "Proxy configuration examples"),
+        ]
+        for path, desc in docs:
+            console.print(f"  [bold]{path:<30}[/bold] [dim]{desc}[/dim]")
+
+        console.print()
+        console.print("[dim]Run [bold cyan]xts guide[/bold cyan] for an interactive tutorial[/dim]")
+        console.print("[dim]Documentation files are in the XTS repository root[/dim]")
         console.print()
