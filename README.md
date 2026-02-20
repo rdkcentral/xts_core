@@ -1,170 +1,171 @@
-<div style="text-align:center"><img src="docs/images/XTS_Logo_250.png"/></div>
 
-# XTS
+<div align="center">
+  <img src="docs/images/XTS_Logo_250.png" alt="XTS Logo"/>
+</div>
 
-**eXtendable Task Syntax**
 
-XTS is a flexible and declarative command orchestration system designed to simplify and unify how engineers run tests, build software, and automate routine tasks in embedded development environments. It replaces ad-hoc scripts with structured, reusable, and readable command definitions written in YAML.
+# XTS Core
 
-By enabling users to define command groups and actions in .xts files, XTS brings consistency and clarity to complex command workflows — making development and testing easier to manage and less error-prone.
----
+**eXtendable Task Syntax (XTS)**
 
-<details>
-<summary style="font-weight:bold;font-size:large;">Contents</summary>
-
-* [Why XTS](#why-xts)
-  * [Key Features](#key-features)
-    * [Other Features](#other-features)
-    * [Planned Features](#planned-features)
-* [Use Cases](#use-cases)
-* [Installation](#installation)
-  * [Installation Requirements](#installation-requirements)
-  * [Installation Commands](#installation-commands)
-* [Getting Started](#getting-started)
-  * [Download the example .xts file](#download-the-example-.xts-file)
-  * [Run a simple command](#run-a-simple-command)
-  * [Run a command with arguments](#run-a-command-with-arguments)
-  * [Finally try a list command](#finally-try-a-list-command)
-  * [Try the remaining commands](#try-the-remaining-commands)
-  * [Write a custom .xts file](#write-a-custom-.xts-file)
-* [Contributing](#contributing)
-* [License](#license)
-</details>
+XTS is a flexible, declarative command orchestration system for embedded and developer workflows. It replaces ad-hoc scripts with structured, reusable, and readable command definitions written in YAML, making complex command workflows consistent, discoverable, and easy to maintain.
 
 ---
 
-## Why XTS
+## Table of Contents
 
-- **Unified Command Interface**: One consistent way to run test, build, and utility commands.
+- [Why XTS?](#why-xts)
+- [Features](#features)
+- [Use Cases](#use-cases)
+- [Installation](#installation)
+- [Alias Management & Usage](#alias-management--usage)
+- [Example .xts File](#example-xts-file)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Human-Readable Configuration**: YAML format makes it easy to define, review, and update command logic.
+---
 
-- **Structured and Discoverable**: No need to memorize scripts or command sequences — just run `xts --help` to see what’s available.
+## Why XTS?
 
-- **Easy to Extend**: Add new commands or workflows by simply editing or adding .xts files.
+- **Unified Command Interface:** One consistent way to run test, build, and utility commands.
+- **Human-Readable YAML:** Easy to define, review, and update command logic.
+- **Discoverable & Structured:** No need to memorize scripts—`xts <alias> --help` shows all available commands for an alias.
+- **Extensible:** Add new commands or workflows by editing or adding `.xts` files and managing aliases.
+- **Reduces Errors:** Encourages reuse of tested command patterns, reducing manual mistakes.
 
-- **Reduces Errors**: Encourages reuse of tested command patterns, reducing manual mistakes.
+## Features
 
-### Key Features
-
-- **Command Discovery and Management**: XTS provides a powerful and flexible way to discover and manage your command definitions.<br>
-XTS currently discovers commands from .xts files located in your **current working directory**.
-
-- **Declarative YAML Configuration**: Define commands in a portable and version-controlled way.
-
-#### Other Features
-
-- **Command Grouping**: Organize commands into logical sections like run, build, and setup.
-
-- **CLI Access**: Use xts <group> <command> to execute defined commands directly.
-
-- **Developer-Focused**: Designed for local workflows — nothing extra required to get started.
-
-- **Environment Resource Awareness**: Can work with external tools to allocate or prepare hardware for testing (optional).
-
-
-#### Planned Features
-
-- **Planned Remote Config Support**: In upcoming versions, XTS will introduce the ability to use XTS config files hosted in remote locations.
+- **Alias-Only Usage:** All XTS command execution is routed through an alias. Direct discovery of .xts files in the current directory is no longer supported.
+- **Declarative YAML Configuration:** Define commands in portable, version-controlled `.xts` files.
+- **Command Grouping:** Organize commands into logical sections (e.g., `run`, `build`).
+- **CLI Access:** Use `xts <alias> <group> <command>` to execute defined commands directly.
+- **Plugin Support:** Extend XTS with Python plugins (see `src/xts_core/plugins`).
+- **Resource Awareness:** Integrates with external tools (e.g., Allocator Client) for hardware resource management.
+- **Linux Support:** Designed for Linux environments (Python 3.10+ required).
 
 ## Use Cases
 
-- **Embedded Testing**: Run hardware or software tests across devices or setups.
-
-- **Build Automation**: Standardize how code is compiled or packaged.
-
-- **System Utilities**: Automate setup tasks like logging, flashing, or cleanup routines.
-
-- **Developer Workflows**: Save time with shortcuts for repetitive development commands.
+- **Embedded Testing:** Run hardware/software tests across devices or setups.
+- **Build Automation:** Standardize how code is compiled or packaged.
+- **System Utilities:** Automate setup tasks like logging, flashing, or cleanup routines.
+- **Developer Workflows:** Save time with shortcuts for repetitive development commands.
 
 ## Installation
 
-### Installation Requirements
+### Requirements
 - Python 3.10 or above
+- Linux OS
 
-> *Currently only the Linux operating system is supported by XTS*
-
-### Installation Commands
-
-XTS can be installed with the following commands:
-```
-pip install git+ssh://git@github.com/rdkcentral/xts_core.git@master
+### Install Steps
+```sh
+pip install git+https://github.com/rdkcentral/xts_core.git@master
 xts-install
 ```
-<details>
-<summary style="font-weight:bold">On Linux</summary>
-
-After installation is complete the `xts` binary can be found in the users home directory under `.xts/bin/`. This will need adding to the PATH variable. The below command will do this:
+After installation, the `xts` binary is placed in `$HOME/.xts/bin/`. Add this to your PATH:
 ```sh
 export PATH="$HOME/.xts/bin:$PATH"
 ```
-> This can be made permanent by adding the above command as a line in the users .profile or .rc file e.g.
-> ```sh
->echo "export PATH=\"$HOME/.xts/bin:\$PATH\"" >> ~/.bashrc
->```
-</details>
-
-
-## Getting Started
-
-After installation, `xts` will be available as a command. Command definitions from  .xts files found in your current working directory will be instantly available.
-
-### Download the example .xts file
-The below command will download the file into the current working directory.
-```
-curl https://raw.githubusercontent.com/rdkcentral/xts_core/refs/heads/master/examples/hello_world.xts -o hello_world.xts
-```
-> This file contains many example commands, all with comments describing how they work.
-
-### Run a simple command
-Since the first key in the `hello_world.xts` file is **run** this needs to be given as the first argument.<br>
-Then the command key can be given. For this example use the `hello_world` key.
-The full command will be:
-```
-xts run hello_world
-```
-This should cause `hello world` to be printed in the console.
-> *If there more were more keys between run and hello_world, these would need to be given, sequentially, as arguments.*
-
-### Run a command with arguments
-The `echo_passthrough` key command in the file has `passthrough:true` listed in it's `params` section. This means that any extra arguments given after the command key will be substituted into the command run, replacing the `$@`.
-
-To try this run the command below:
-```
-xts run echo_passthrough This is the example
-```
-This should print `This is the example` in the console.
-
-### Finally try a list command
-The `list` command key in the `hello_world.xts` uses a list in it's `command` section. This means that each of these command will be run individually, in sequence.<br>
-Running the below command will result in multiple prints to the console.
-```
-xts run example list
-```
-This should cause the follow to print into the console:
-```
-These
-are
-separate
-echoes
+To make this permanent:
+```sh
+echo 'export PATH="$HOME/.xts/bin:$PATH"' >> ~/.bashrc
 ```
 
-### Try the remaining commands
+## Alias Management & Usage
 
-To check which commands are available run `xts --help`. This may need to be run, following other keys to follow the nesting in the file e.g.
+All XTS usage is now via **aliases**. You must add an alias for each .xts file (local or remote) you want to use. Direct usage of .xts files in the current directory is not supported.
+
+### Adding Aliases
+
+- **From a local file:**
+  ```sh
+  xts --alias /path/to/yourfile.xts [--name myalias]
+  # or
+  xts --alias --add /path/to/yourfile.xts [--name myalias]
+  ```
+- **From a remote URL:**
+  ```sh
+  xts --alias https://example.com/yourfile.xts [--name myalias]
+  # or
+  xts --alias --add https://example.com/yourfile.xts [--name myalias]
+  ```
+- **From a directory (adds all .xts files in the directory):**
+  ```sh
+  xts --alias /path/to/dir/ [--name prefix]
+  # aliases will be named as prefix/filename
+  ```
+
+### Listing Aliases
+
+```sh
+xts --alias --list
 ```
-xts run example --help
+
+### Removing an Alias
+
+```sh
+xts --alias --remove myalias
 ```
 
-### Write a custom .xts file
-Any file with the extension `.xts` will be picked up by the tool. Therefore, creating a file with this extension and filling it with valid command definitions will create a custom `.xts` file.
+### Refreshing an Alias (re-download or re-copy from original source)
 
-XTS is based on the yaml_runner library and follows it command definition structure. Find out more about this [here]()
+```sh
+xts --alias --refresh myalias
+```
+
+### Using an Alias to Run Commands
+
+Once an alias is added, use it as the first argument to XTS:
+
+```sh
+xts myalias <group> <command> [args...]
+# Example (if your .xts file has a 'run' group and 'hello_world' command):
+xts myalias run hello_world
+```
+
+To see available commands for an alias:
+```sh
+xts myalias --help
+```
+
+## Example .xts File
+
+```yaml
+run:
+  hello_world:
+    command: echo "hello world"
+    description: Print hello world in stdout
+  echo_passthrough:
+    description: Print all arguments passed after echo_passthrough.
+    command: echo $@
+    params:
+      passthrough: true
+  example:
+    description: Example of how nested commands work.
+    nested:
+      description: Run the nested command.
+      command: echo "This is the nested command"
+    list:
+      description: Run a list of commands
+      command:
+        - echo "These"
+        - echo "are"
+        - echo "separate"
+        - echo "echoes"
+    list_passthrough:
+      description: Run each command listed, substituting the extra args in.
+      command:
+        - echo "echo 1"
+        - echo "$@"
+        - echo "echo 2"
+        - echo "$@"
+      params:
+        passthrough: true
+```
 
 ## Contributing
 
-See contributing file: [CONTRIBUTING.md](CONTRIBUTING.md)
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-See license file: [LICENSE](LICENSE)
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE).
