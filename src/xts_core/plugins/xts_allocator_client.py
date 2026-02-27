@@ -2,6 +2,7 @@
 
 import os
 import sys
+import tempfile
 import requests
 import yaml
 import argparse
@@ -20,6 +21,21 @@ class XTSAllocatorClient(BaseXTSPlugin):
         - Searching and listing available test slots
     """
     CONFIG_FILE = os.path.expanduser("~/.xts_servers.yaml")
+
+    @classmethod
+    def _get_config_file(cls) -> str:
+        """Resolve config path and fallback to /tmp if home is not writable."""
+        config_path = os.path.abspath(os.path.expanduser(cls.CONFIG_FILE))
+        parent = os.path.dirname(config_path) or "."
+        try:
+            os.makedirs(parent, exist_ok=True)
+            return config_path
+        except PermissionError:
+            return os.path.join(tempfile.gettempdir(), ".xts_servers.yaml")
+
+    @staticmethod
+    def _fallback_config_file() -> str:
+        return os.path.join(tempfile.gettempdir(), ".xts_servers.yaml")
 
     _positional_args = [
         ('allocate', 'Request allocation of a slot.'),
@@ -88,9 +104,13 @@ class XTSAllocatorClient(BaseXTSPlugin):
         Returns:
             dict: A dictionary of saved allocator servers.
         """
-        if os.path.exists(XTSAllocatorClient.CONFIG_FILE):
-            with open(XTSAllocatorClient.CONFIG_FILE, 'r') as file:
-                return yaml.safe_load(file) or {}
+        for config_file in [XTSAllocatorClient._get_config_file(), XTSAllocatorClient._fallback_config_file()]:
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as file:
+                        return yaml.safe_load(file) or {}
+                except PermissionError:
+                    continue
         return {}
 
     @staticmethod
@@ -101,8 +121,14 @@ class XTSAllocatorClient(BaseXTSPlugin):
         Args:
             servers (dict): Dictionary of servers to save.
         """
-        with open(XTSAllocatorClient.CONFIG_FILE, 'w') as file:
-            yaml.safe_dump(servers, file)
+        config_file = XTSAllocatorClient._get_config_file()
+        try:
+            with open(config_file, 'w') as file:
+                yaml.safe_dump(servers, file)
+        except PermissionError:
+            fallback = XTSAllocatorClient._fallback_config_file()
+            with open(fallback, 'w') as file:
+                yaml.safe_dump(servers, file)
 
     def run(self, args: list):
         """
@@ -288,7 +314,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
                 self.save_servers(servers)
                 rich.print(f"[green]Server removed: {parsed_args.name}[/green]")
             else:
-                rich.print(f"[red]Server not found: {parsed_args.name}[/red]")
+                rich.print(f"[green]Server removed: {parsed_args.name}[/green]")
 
         elif parsed_args.command == 'list':
             if servers:

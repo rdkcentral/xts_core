@@ -64,6 +64,52 @@ class XTSValidator:
         else:
             self.schema = None
             warning("Schema file not found - basic validation only")
+
+        self._top_level_reserved = {
+            "brief", "schema_version", "version", "changelog", "functions", "commands", "description"
+        }
+        self._node_reserved = {
+            "description", "brief", "command", "args", "arguments", "options", "params",
+            "formatter", "environment", "working_directory", "timeout"
+        }
+
+    def _extract_commands(self, config: Dict) -> Dict:
+        """Return command definitions from either modern or hierarchical config styles."""
+        commands = config.get("commands")
+        if isinstance(commands, dict) and commands:
+            return commands
+
+        extracted = {}
+        for key, value in config.items():
+            if key in self._top_level_reserved:
+                continue
+            if isinstance(value, dict):
+                extracted[key] = value
+        return extracted
+
+    def _iter_command_nodes(self, node: Dict, path: str):
+        """Yield (path, definition) for every executable command node."""
+        if not isinstance(node, dict):
+            return
+
+        if "command" in node:
+            yield path, node
+
+        for key, value in node.items():
+            if key in self._node_reserved:
+                continue
+            if isinstance(value, dict):
+                child_path = f"{path}.{key}" if path else key
+                yield from self._iter_command_nodes(value, child_path)
+
+    @staticmethod
+    def _command_to_text(command_value: Any) -> str:
+        """Normalize command value to text for lightweight validation checks."""
+        if isinstance(command_value, list):
+            return "\n".join(str(item) for item in command_value)
+        if isinstance(command_value, str):
+            return command_value
+        return ""
     
     def validate_file(self, filepath: str, verbose: bool = False) -> Tuple[bool, List[str], List[str]]:
         """Validate an XTS file.
@@ -99,16 +145,16 @@ class XTSValidator:
             errors.append("Empty configuration file")
             return False, errors, warnings
         
-        # JSON Schema validation
+        # JSON Schema validation (best-effort; semantic validation is authoritative)
         if JSONSCHEMA_AVAILABLE and self.schema:
             try:
                 jsonschema.validate(instance=config, schema=self.schema)
                 if verbose:
                     info("✓ Schema validation passed")
             except jsonschema.ValidationError as e:
-                errors.append(f"Schema validation failed: {e.message}")
+                warnings.append(f"Schema validation warning: {e.message}")
                 if e.path:
-                    errors.append(f"  Location: {' -> '.join(str(p) for p in e.path)}")
+                    warnings.append(f"  Location: {' -> '.join(str(p) for p in e.path)}")
         
         # Additional semantic validation
         self._validate_commands(config, errors, warnings, verbose)
@@ -120,46 +166,63 @@ class XTSValidator:
     
     def _validate_commands(self, config: Dict, errors: List[str], warnings: List[str], verbose: bool):
         """Validate command definitions."""
-        commands = config.get('commands', {})
+        commands = self._extract_commands(config)
         
         if not commands:
             warnings.append("No commands defined")
             return
         
-        if verbose:
-            info(f"Validating {len(commands)} command(s)")
+        validated_count = 0
         
         for cmd_name, cmd_def in commands.items():
             # Check command name
             if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', cmd_name):
                 errors.append(f"Invalid command name '{cmd_name}' - must start with letter/underscore")
-            
-            # Check required fields
-            if 'command' not in cmd_def:
-                errors.append(f"Command '{cmd_name}' missing 'command' field")
+
+            if not isinstance(cmd_def, dict):
+                errors.append(f"Command '{cmd_name}' must be a mapping")
                 continue
-            
-            # Check command is not empty
-            if not cmd_def['command'].strip():
-                errors.append(f"Command '{cmd_name}' has empty command string")
-            
-            # Validate args
-            if 'args' in cmd_def:
+
+            leaf_count = 0
+            for full_name, leaf_def in self._iter_command_nodes(cmd_def, cmd_name):
+                leaf_count += 1
+                validated_count += 1
+
+                command_value = leaf_def.get('command')
+                command_text = self._command_to_text(command_value)
+                if not command_text.strip():
+                    errors.append(f"Command '{full_name}' has empty command string")
+
+                args = leaf_def.get('args', [])
+                if not isinstance(args, list):
+                    errors.append(f"Command '{full_name}': 'args' must be a list")
+                    continue
+
                 seen_optional = False
-                for i, arg in enumerate(cmd_def['args']):
+                for i, arg in enumerate(args):
+                    if not isinstance(arg, dict):
+                        errors.append(f"Command '{full_name}': arg index {i} must be a mapping")
+                        continue
+
                     arg_name = arg.get('name', f'arg_{i}')
-                    
+
                     # Check required comes before optional
                     is_required = arg.get('required', True)
                     if not is_required:
                         seen_optional = True
                     elif seen_optional:
-                        warnings.append(f"Command '{cmd_name}': Required arg '{arg_name}' after optional arg")
-                    
+                        warnings.append(f"Command '{full_name}': Required arg '{arg_name}' after optional arg")
+
                     # Check placeholder exists in command
                     placeholder = f"{{{{{arg_name}}}}}"
-                    if placeholder not in cmd_def['command']:
-                        warnings.append(f"Command '{cmd_name}': Arg '{arg_name}' not used in command")
+                    if placeholder not in command_text:
+                        warnings.append(f"Command '{full_name}': Arg '{arg_name}' not used in command")
+
+            if leaf_count == 0:
+                errors.append(f"Command '{cmd_name}' missing 'command' field")
+
+        if verbose:
+            info(f"Validating {validated_count} command(s)")
     
     def _validate_functions(self, config: Dict, errors: List[str], warnings: List[str], verbose: bool):
         """Validate function definitions."""
@@ -182,64 +245,74 @@ class XTSValidator:
     
     def _validate_placeholders(self, config: Dict, errors: List[str], warnings: List[str], verbose: bool):
         """Validate placeholder usage."""
-        commands = config.get('commands', {})
+        commands = self._extract_commands(config)
         functions = config.get('functions', {})
         
         # Build set of defined functions (user-defined + standard library)
         from .standard_functions import get_standard_function_names
         func_names = get_standard_function_names() | set(functions.keys())
         
-        for cmd_name, cmd_def in commands.items():
+        for top_name, top_def in commands.items():
+            if not isinstance(top_def, dict):
+                continue
+            for cmd_name, cmd_def in self._iter_command_nodes(top_def, top_name):
             # Find all placeholders in command
-            command_str = cmd_def.get('command', '')
-            placeholders = re.findall(r'\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}', command_str)
+                command_str = self._command_to_text(cmd_def.get('command', ''))
+                placeholders = re.findall(r'\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}', command_str)
             
             # Build set of defined args
-            arg_names = {arg['name'] for arg in cmd_def.get('args', [])}
+                arg_names = {
+                    arg.get('name')
+                    for arg in cmd_def.get('args', [])
+                    if isinstance(arg, dict) and arg.get('name')
+                }
             
             # Check each placeholder
-            for placeholder in placeholders:
-                if placeholder not in arg_names and placeholder not in func_names:
-                    errors.append(
-                        f"Command '{cmd_name}': Unknown placeholder '{{{{{placeholder}}}}}' "
-                        f"(not in args or functions)"
-                    )
+                for placeholder in placeholders:
+                    if placeholder not in arg_names and placeholder not in func_names:
+                        errors.append(
+                            f"Command '{cmd_name}': Unknown placeholder '{{{{{placeholder}}}}}' "
+                            f"(not in args or functions)"
+                        )
             
             # Check formatter
-            if 'formatter' in cmd_def:
-                formatter = cmd_def['formatter']
-                formatter_placeholders = re.findall(r'\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}', formatter)
-                for placeholder in formatter_placeholders:
-                    if placeholder not in func_names:
-                        errors.append(
-                            f"Command '{cmd_name}': Formatter references unknown function '{{{{{placeholder}}}}}'"
-                        )
+                if 'formatter' in cmd_def and isinstance(cmd_def['formatter'], str):
+                    formatter = cmd_def['formatter']
+                    formatter_placeholders = re.findall(r'\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}', formatter)
+                    for placeholder in formatter_placeholders:
+                        if placeholder not in func_names:
+                            errors.append(
+                                f"Command '{cmd_name}': Formatter references unknown function '{{{{{placeholder}}}}}'"
+                            )
     
     def _check_best_practices(self, config: Dict, errors: List[str], warnings: List[str], verbose: bool):
         """Check best practices and style guidelines."""
-        commands = config.get('commands', {})
-        
-        for cmd_name, cmd_def in commands.items():
+        commands = self._extract_commands(config)
+
+        for top_name, top_def in commands.items():
+            if not isinstance(top_def, dict):
+                continue
+            for cmd_name, cmd_def in self._iter_command_nodes(top_def, top_name):
             # Check for description
-            if 'description' not in cmd_def:
-                warnings.append(f"Command '{cmd_name}' missing description")
+                if 'description' not in cmd_def:
+                    warnings.append(f"Command '{cmd_name}' missing description")
             
             # Check arg descriptions
-            for arg in cmd_def.get('args', []):
-                if 'description' not in arg:
-                    warnings.append(f"Command '{cmd_name}': Arg '{arg['name']}' missing description")
+                for arg in cmd_def.get('args', []):
+                    if isinstance(arg, dict) and 'description' not in arg and 'name' in arg:
+                        warnings.append(f"Command '{cmd_name}': Arg '{arg['name']}' missing description")
             
             # Check for very long commands
-            command_str = cmd_def.get('command', '')
-            if len(command_str) > 500:
-                warnings.append(
-                    f"Command '{cmd_name}': Very long command ({len(command_str)} chars) - "
-                    "consider using a script file"
-                )
+                command_str = self._command_to_text(cmd_def.get('command', ''))
+                if len(command_str) > 500:
+                    warnings.append(
+                        f"Command '{cmd_name}': Very long command ({len(command_str)} chars) - "
+                        "consider using a script file"
+                    )
             
             # Check for inline python without python3
-            if 'python -c' in command_str and 'python3 -c' not in command_str:
-                warnings.append(f"Command '{cmd_name}': Use 'python3' instead of 'python' for compatibility")
+                if 'python -c' in command_str and 'python3 -c' not in command_str:
+                    warnings.append(f"Command '{cmd_name}': Use 'python3' instead of 'python' for compatibility")
 
 
 def validate_command(filepath: str, verbose: bool = False, json_output: bool = False) -> int:

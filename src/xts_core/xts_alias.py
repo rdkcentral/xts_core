@@ -37,6 +37,7 @@ import hashlib
 import json
 import time
 import shutil
+import tempfile
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
@@ -53,10 +54,58 @@ except:
     from xts_core import utils
 
 
-CACHE_DIR = os.path.expanduser("~/.xts/cache")
-ALIAS_FILE = os.path.expanduser("~/.xts/aliases.json")
-METADATA_FILE = os.path.expanduser("~/.xts/metadata.json")
-PROXIES_FILE = os.path.expanduser("~/.xts/proxies.json")
+DEFAULT_CACHE_DIR = "~/.xts/cache"
+DEFAULT_ALIAS_FILE = "~/.xts/aliases.json"
+DEFAULT_METADATA_FILE = "~/.xts/metadata.json"
+DEFAULT_PROXIES_FILE = "~/.xts/proxies.json"
+
+# Public constants are intentionally patchable in tests.
+CACHE_DIR = DEFAULT_CACHE_DIR
+ALIAS_FILE = DEFAULT_ALIAS_FILE
+METADATA_FILE = DEFAULT_METADATA_FILE
+PROXIES_FILE = DEFAULT_PROXIES_FILE
+
+
+def _resolve_path(path: str) -> str:
+    """Resolve ~ and return an absolute path."""
+    return os.path.abspath(os.path.expanduser(path))
+
+
+def _alias_file_path() -> str:
+    return _resolve_path(ALIAS_FILE)
+
+
+def _metadata_file_path() -> str:
+    if METADATA_FILE == DEFAULT_METADATA_FILE:
+        return os.path.join(os.path.dirname(_alias_file_path()), "metadata.json")
+    return _resolve_path(METADATA_FILE)
+
+
+def _proxies_file_path() -> str:
+    if PROXIES_FILE == DEFAULT_PROXIES_FILE:
+        return os.path.join(os.path.dirname(_alias_file_path()), "proxies.json")
+    return _resolve_path(PROXIES_FILE)
+
+
+def _cache_dir_path() -> str:
+    if CACHE_DIR == DEFAULT_CACHE_DIR:
+        return os.path.join(os.path.dirname(_alias_file_path()), "cache")
+    return _resolve_path(CACHE_DIR)
+
+
+def get_alias_file_path() -> str:
+    """Return the fully resolved aliases file path."""
+    return _alias_file_path()
+
+
+def _switch_to_tmp_paths():
+    """Fallback to /tmp if the configured home path is not writable."""
+    global CACHE_DIR, ALIAS_FILE, METADATA_FILE, PROXIES_FILE
+    tmp_root = os.path.join(tempfile.gettempdir(), ".xts")
+    CACHE_DIR = os.path.join(tmp_root, "cache")
+    ALIAS_FILE = os.path.join(tmp_root, "aliases.json")
+    METADATA_FILE = os.path.join(tmp_root, "metadata.json")
+    PROXIES_FILE = os.path.join(tmp_root, "proxies.json")
 
 
 class AliasStatus:
@@ -72,8 +121,15 @@ class AliasStatus:
 
 def ensure_dirs():
     """Ensure that the cache and alias directories exist."""
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    os.makedirs(os.path.dirname(ALIAS_FILE), exist_ok=True)
+    cache_dir = _cache_dir_path()
+    alias_dir = os.path.dirname(_alias_file_path())
+    try:
+        os.makedirs(cache_dir, exist_ok=True)
+        os.makedirs(alias_dir, exist_ok=True)
+    except PermissionError:
+        _switch_to_tmp_paths()
+        os.makedirs(_cache_dir_path(), exist_ok=True)
+        os.makedirs(os.path.dirname(_alias_file_path()), exist_ok=True)
 
 
 def compute_file_hash(filepath: str) -> str:
@@ -106,7 +162,7 @@ def get_cache_path(source: str, alias_name: str) -> str:
     # Use alias name + hash of source for cache filename
     source_hash = hashlib.sha256(source.encode()).hexdigest()[:16]
     cache_filename = f"{alias_name}_{source_hash}.xts"
-    return os.path.join(CACHE_DIR, cache_filename)
+    return os.path.join(_cache_dir_path(), cache_filename)
 
 
 def find_xts_files(path: str, recursive: bool = False) -> List[str]:
@@ -230,6 +286,31 @@ def fetch_remote_file(url: str, cache_path: str, proxy_config: Optional[Dict] = 
     except Exception as e:
         utils.error(f"Error caching file: {e}")
         return False, None
+
+
+def fetch_url_to_cache(url: str, alias_name: str = "remote") -> Optional[str]:
+    """Compatibility wrapper used by XTS to fetch a remote file into cache."""
+    ensure_dirs()
+    cache_path = get_cache_path(url, alias_name)
+    success, _ = fetch_remote_file(url, cache_path)
+    return cache_path if success else None
+
+
+def _validate_on_add(cached_path: str, alias_name: str) -> bool:
+    """Best-effort validation hook for newly added aliases."""
+    try:
+        from .xts_validator import XTSValidator
+    except Exception:
+        return True
+
+    try:
+        validator = XTSValidator()
+        is_valid, errors, _ = validator.validate_file(cached_path)
+        if not is_valid:
+            utils.warning(f"Alias '{alias_name}' cached but validation failed: {errors[0] if errors else 'unknown error'}")
+        return is_valid
+    except Exception:
+        return True
 
 
 def cache_local_file(source_path: str, cache_path: str) -> Tuple[bool, Optional[Dict]]:
@@ -366,11 +447,12 @@ def check_local_updates(metadata: Dict) -> Tuple[bool, str]:
 
 def load_metadata() -> Dict:
     """Load metadata for all cached files."""
-    if not os.path.exists(METADATA_FILE):
+    metadata_file = _metadata_file_path()
+    if not os.path.exists(metadata_file):
         return {}
     
     try:
-        with open(METADATA_FILE, 'r') as f:
+        with open(metadata_file, 'r') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -379,8 +461,14 @@ def load_metadata() -> Dict:
 def save_metadata(metadata: Dict):
     """Save metadata for all cached files."""
     ensure_dirs()
+    metadata_file = _metadata_file_path()
     try:
-        with open(METADATA_FILE, 'w') as f:
+        with open(metadata_file, 'w') as f:
+            json.dump(metadata, f, indent=2)
+    except PermissionError:
+        _switch_to_tmp_paths()
+        ensure_dirs()
+        with open(_metadata_file_path(), 'w') as f:
             json.dump(metadata, f, indent=2)
     except Exception as e:
         utils.warning(f"Failed to save metadata: {e}")
@@ -388,11 +476,12 @@ def save_metadata(metadata: Dict):
 
 def load_proxies() -> Dict:
     """Load proxy configurations."""
-    if not os.path.exists(PROXIES_FILE):
+    proxies_file = _proxies_file_path()
+    if not os.path.exists(proxies_file):
         return {}
     
     try:
-        with open(PROXIES_FILE, 'r') as f:
+        with open(proxies_file, 'r') as f:
             return json.load(f)
     except Exception:
         return {}
@@ -401,8 +490,14 @@ def load_proxies() -> Dict:
 def save_proxies(proxies: Dict):
     """Save proxy configurations."""
     ensure_dirs()
+    proxies_file = _proxies_file_path()
     try:
-        with open(PROXIES_FILE, 'w') as f:
+        with open(proxies_file, 'w') as f:
+            json.dump(proxies, f, indent=2)
+    except PermissionError:
+        _switch_to_tmp_paths()
+        ensure_dirs()
+        with open(_proxies_file_path(), 'w') as f:
             json.dump(proxies, f, indent=2)
     except Exception as e:
         utils.warning(f"Failed to save proxies: {e}")
@@ -495,6 +590,10 @@ def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Option
         proxy_name: Optional proxy name (reference to proxy configuration)
     """
     ensure_dirs()
+
+    # Allow directory-mode callers to pass path in "name" with value omitted.
+    if value is None:
+        value = name
     
     # Load existing aliases and metadata
     aliases = list_aliases()
@@ -520,6 +619,7 @@ def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Option
             # Store proxy name reference in metadata
             if proxy_name:
                 all_metadata[name]['proxy_name'] = proxy_name
+            _validate_on_add(cache_path, name)
             utils.success(f"✓ Added remote alias '{name}' -> {value}")
         else:
             utils.error(f"Failed to add alias '{name}'")
@@ -543,6 +643,7 @@ def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Option
         if success:
             aliases[name] = cache_path
             all_metadata[name] = metadata
+            _validate_on_add(cache_path, name)
             utils.success(f"✓ Added local alias '{name}' -> {source_path}")
         else:
             utils.error(f"Failed to add alias '{name}'")
@@ -586,6 +687,7 @@ def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Option
             if success:
                 aliases[file_alias] = cache_path
                 all_metadata[file_alias] = metadata
+                _validate_on_add(cache_path, file_alias)
                 print(f"  ✓ Added '{file_alias}' -> {file}")
                 added += 1
         
@@ -596,7 +698,7 @@ def add_alias(name: str, value: str, recursive: bool = False, proxy_name: Option
         return
     
     # Save aliases and metadata
-    with open(ALIAS_FILE, 'w') as f:
+    with open(_alias_file_path(), 'w') as f:
         json.dump(aliases, f, indent=2)
     save_metadata(all_metadata)
 
@@ -610,10 +712,11 @@ def list_aliases(check_updates: bool = False) -> Dict:
     Returns:
         Dictionary of aliases
     """
-    if not os.path.exists(ALIAS_FILE):
+    alias_file = _alias_file_path()
+    if not os.path.exists(alias_file):
         return {}
     
-    with open(ALIAS_FILE, 'r') as f:
+    with open(alias_file, 'r') as f:
         aliases = json.load(f)
     
     if check_updates:
@@ -700,10 +803,11 @@ def remove_alias(name: str):
     Args:
         name: Alias name to remove
     """
-    if not os.path.exists(ALIAS_FILE):
+    alias_file = _alias_file_path()
+    if not os.path.exists(alias_file):
         return
     
-    with open(ALIAS_FILE, 'r') as f:
+    with open(alias_file, 'r') as f:
         aliases = json.load(f)
     
     if name not in aliases:
@@ -721,7 +825,7 @@ def remove_alias(name: str):
     # Remove from aliases
     del aliases[name]
     
-    with open(ALIAS_FILE, 'w') as f:
+    with open(alias_file, 'w') as f:
         json.dump(aliases, f, indent=2)
     
     # Remove metadata

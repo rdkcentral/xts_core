@@ -26,7 +26,7 @@
 # and runs git operations across all of them.
 #
 # Quick Start:
-#   1. Install:       xts alias add git /path/to/git.xts
+#   1. Install:       xts alias add og /path/to/og.xts
 #   2. List repos:    xts og remote
 #   3. All branches:  xts og branches
 #   4. Git status:    xts og status

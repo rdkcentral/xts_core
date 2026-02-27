@@ -38,6 +38,7 @@ import os
 import re
 import sys
 import json
+from typing import Optional
 
 import yaml
 try:
@@ -58,14 +59,34 @@ __version__ = "2.0.0"
 #   xts alias add allocator http://server:5000/xts_allocator.xts
 
 try:
-    from .utils import info, error, warning, success, is_url
+    from . import utils as xts_utils
 except:
-    from xts_core.utils import info, error, warning, success, is_url
+    from xts_core import utils as xts_utils
 
 try:
     from . import xts_alias
 except:
     from xts_core import xts_alias
+
+
+def info(message):
+    return xts_utils.info(message)
+
+
+def warning(message):
+    return xts_utils.warning(message)
+
+
+def success(message):
+    return xts_utils.success(message)
+
+
+def error(message):
+    return xts_utils.error(message)
+
+
+def is_url(value):
+    return xts_utils.is_url(value)
 
 
 class RichHelpFormatter(argparse.RawTextHelpFormatter):
@@ -169,8 +190,7 @@ class RichArgumentParser(argparse.ArgumentParser):
         else:
             # Default error handling
             self.print_usage(sys.stderr)
-            from xts_core.utils import error as rich_error
-            rich_error(f"{message}")
+            error(f"{message}")
 
 
 class XTS():
@@ -197,6 +217,7 @@ class XTS():
         except ImportError:
             self._plugins = []
         self._used_args = []
+        self._runtime_context = {"alias_name": None}
 
 
     @property
@@ -234,10 +255,13 @@ class XTS():
                     self._command_sections = self._get_command_sections()
             except PermissionError:
                 error(f'Could not read xts config: {config}')
+                raise SystemExit(1)
             except yaml.scanner.ScannerError as e:
                 error(f'The xts file is incorrectly formatted: {config}')
+                raise SystemExit(1)
         else:
-            error('xts config specified does not exist')    
+            error('xts config specified does not exist')
+            raise SystemExit(1)
 
     def _parse_first_arg(self):
         """
@@ -279,7 +303,7 @@ class XTS():
                 console.print("\n[bold yellow]Configured Aliases:[/bold yellow]")
                 # Load alias file to get source paths
                 try:
-                    with open(xts_alias.ALIAS_FILE) as f:
+                    with open(xts_alias.get_alias_file_path()) as f:
                         alias_config = json.load(f)
                 except:
                     alias_config = {}
@@ -347,9 +371,9 @@ class XTS():
             first_arg = sys.argv[1]
             resolved_alias_name = first_arg  # Store for display
             resolved = self._resolve_first_arg(first_arg)
-            if not resolved:
+            if not resolved and self._xts_config is None:
                 self._find_xts_config()
-        else:
+        elif self._xts_config is None:
             self._find_xts_config() 
 
         # full parser with YAML/plugin commands
@@ -394,38 +418,40 @@ class XTS():
                 - The resolved .xts file path (local or cached).
                 - None if no resolution could be performed.
         """
-        if arg == "alias":
-            return "alias"
+        if arg in ("alias", "proxy"):
+            return arg
 
+        # Local file provided directly
         if os.path.exists(arg) and arg.endswith(".xts"):
             self.xts_config = arg
             self._used_args.append(arg)
-            sys.argv.pop(1)
-            return arg
+            if len(sys.argv) > 1 and sys.argv[1] == arg:
+                sys.argv.pop(1)
+            return os.path.basename(arg)
 
-        try:
-            if os.path.exists(xts_alias.ALIAS_FILE):
-                with open(xts_alias.ALIAS_FILE) as f:
-                    aliases = json.load(f)
-            else:
-                aliases = {}
-
-            if arg in aliases:
-                arg = aliases[arg]
-
-            if is_url(arg):
-                resolved = xts_alias.fetch_url_to_cache(arg)
-            else:
-                resolved = arg
-
+        # Known alias
+        aliases = xts_alias.list_aliases()
+        if arg in aliases:
+            resolved = aliases[arg]
             if resolved and resolved.endswith(".xts"):
                 self.xts_config = resolved
                 self._used_args.append(arg)
-                sys.argv.pop(1)
-                return resolved
+                self._runtime_context["alias_name"] = arg
+                if len(sys.argv) > 1 and sys.argv[1] == arg:
+                    sys.argv.pop(1)
+                return arg
 
-        except Exception:
-            pass
+        # Remote URL
+        if is_url(arg):
+            xts_alias.ensure_dirs()
+            cache_path = xts_alias.get_cache_path(arg, "remote")
+            success, _ = xts_alias.fetch_remote_file(arg, cache_path)
+            if success and os.path.exists(cache_path):
+                self.xts_config = cache_path
+                self._used_args.append(arg)
+                if len(sys.argv) > 1 and sys.argv[1] == arg:
+                    sys.argv.pop(1)
+                return arg
 
         return None
     
@@ -443,43 +469,16 @@ class XTS():
             path = parsed_args.path
             recursive = getattr(parsed_args, 'recursive', False)
             proxy_name = getattr(parsed_args, 'proxy', None)
+            kwargs = {"recursive": recursive}
+            if proxy_name is not None:
+                kwargs["proxy_name"] = proxy_name
 
-            # Check if this is directory-based batch addition
-            if path is None or name in ['.', '*.xts'] or os.path.isdir(name):
-                # Directory-based alias creation
-                search_dir = name if name not in ['.', '*.xts'] else '.'
-                info(f"Scanning {search_dir} for .xts files{'(recursive)' if recursive else ''}...")
-                xts_files = xts_alias.find_xts_files(search_dir, recursive=recursive)
-                
-                if not xts_files:
-                    warning(f"No .xts files found in {search_dir}")
-                    return
-                
-                added_count = 0
-                for xts_file in xts_files:
-                    # Generate alias name from filename without extension
-                    base_name = os.path.splitext(os.path.basename(xts_file))[0]
-                    xts_alias.add_alias(base_name, xts_file)
-                    success(f"  + [bold cyan]{base_name}[/bold cyan] -> [dim]{xts_file}[/dim]")
-                    added_count += 1
-                
-                success(f"\n+ Added [bold]{added_count}[/bold] alias(es) from [cyan]{search_dir}[/cyan]")
-                # Show usage hint
-                console = Console()
-                console.print(f"\n[dim]Use [bold cyan]xts <alias>[/bold cyan] to load commands[/dim]")
-                if added_count == 1:
-                    console.print(f"[dim]Example: [bold cyan]xts {base_name} --help[/bold cyan][/dim]")
-                else:
-                    console.print(f"[dim]Example: [bold cyan]xts --help[/bold cyan] to see all aliases[/dim]")
-            else:
-                # Single file/URL alias
-                if not is_url(path):
-                    path = os.path.abspath(path)
-                xts_alias.add_alias(name, path, recursive=False, proxy_name=proxy_name)
-                success(f"+ Alias [bold cyan]{name}[/bold cyan] -> [dim]{path}[/dim]")
-                # Show usage hint
-                console = Console()
-                console.print(f"[dim]Use: [bold cyan]xts {name} --help[/bold cyan][/dim]")
+            # Keep behavior thin here; xts_alias.add_alias handles file/url/dir logic.
+            if path is not None and not is_url(path):
+                path = os.path.abspath(path)
+
+            xts_alias.add_alias(name, path, **kwargs)
+            success(f"+ Alias [bold cyan]{name}[/bold cyan] -> [dim]{path}[/dim]")
 
         elif parsed_args.alias_cmd == "list":
             check_updates = getattr(parsed_args, 'check_updates', False)
@@ -494,6 +493,9 @@ class XTS():
                     print()
                     info("[dim]Tip: Use [bold cyan]xts alias list --check[/bold cyan] to check for updates[/dim]")
                 else:
+                    metadata = xts_alias.load_metadata()
+                    for alias_name in aliases:
+                        xts_alias.check_for_updates(alias_name, metadata.get(alias_name, {}))
                     print()  # Newline after update check output
 
         elif parsed_args.alias_cmd == "remove":
@@ -640,13 +642,9 @@ class XTS():
         if len(xts_configs) > 1:
             self._user_select_config(xts_configs)
         elif len(xts_configs) < 1:
-            if len(self._plugins) < 1:
-                # No config and no plugins - let argparse show help
-                pass
-            else:
-                warning('No config found. Continuing only with commands from plugins.')
+            warning('No config found. Continuing only with commands from plugins.')
         else:
-            self.xts_config = xts_configs[0]
+            self.xts_config = os.path.join(os.getcwd(), xts_configs[0])
 
     def _user_select_config(self, choices):
         """
@@ -660,10 +658,23 @@ class XTS():
             SystemExit: Exits with 2 exit code to allow user to re-run the script. 
         """
         warning('Multiple xts file found in the current directory')
-        print('Please run one of the following commands to choose the file to use\n')
-        for filename in choices:
-            print(f'\txts {filename} ...')
-        raise SystemExit(2)
+        print('Select the .xts file to use:\n')
+        for idx, filename in enumerate(choices, start=1):
+            print(f'  {idx}. {filename}')
+
+        selected = input('\nEnter choice number: ').strip()
+        try:
+            index = int(selected) - 1
+        except ValueError:
+            error('Invalid selection')
+            raise SystemExit(1)
+
+        if index < 0 or index >= len(choices):
+            error('Invalid selection')
+            raise SystemExit(1)
+
+        self.xts_config = os.path.join(os.getcwd(), choices[index])
+        raise SystemExit(0)
 
     def _get_command_choices(self) -> list[tuple]:
         """
@@ -678,10 +689,20 @@ class XTS():
         choices_with_desc = []
 
         if self._xts_config:
-            for command, details in self._command_sections.items():
-                description = details.get('description', '')
-                choices_with_desc.append((command, description))  #store as tuple (command, description)
-        #additional commands provided by plugins
+            # Support both styles:
+            # 1) commands: {cmd1: {...}}
+            # 2) top-level command groups: {features: {...}, ...}
+            if "commands" in self._command_sections and isinstance(self._command_sections["commands"], dict):
+                for command, details in self._command_sections["commands"].items():
+                    if isinstance(details, dict):
+                        choices_with_desc.append((command, details.get('description', '')))
+            else:
+                for command, details in self._command_sections.items():
+                    if isinstance(details, dict):
+                        description = details.get('description', '')
+                        choices_with_desc.append((command, description))
+
+        # additional commands provided by plugins
         for plugin in self._plugins:
             choices_with_desc.extend(plugin().provided_args)
         return choices_with_desc
@@ -718,6 +739,78 @@ class XTS():
                     command_sections.update({key:self._xts_config.get(key)})
         return command_sections
 
+    def _command_tree(self) -> dict:
+        """Return the command tree used by the runtime."""
+        if "commands" in self._command_sections and len(self._command_sections) == 1:
+            commands = self._command_sections.get("commands", {})
+            return commands if isinstance(commands, dict) else {}
+        return self._command_sections
+
+    def _find_node_for_path(self, path_parts: list[str]) -> Optional[dict]:
+        """Find a nested command/group node for a command path."""
+        if not path_parts:
+            return None
+
+        node: object = self._command_tree()
+        for part in path_parts:
+            if not isinstance(node, dict):
+                return None
+            if part not in node:
+                return None
+            node = node[part]
+
+        return node if isinstance(node, dict) else None
+
+    def _get_group_subcommands(self, node: dict) -> list[tuple[str, str]]:
+        """Return direct child command/group entries for a node."""
+        if not isinstance(node, dict):
+            return []
+
+        reserved = {
+            "description", "brief", "command", "args", "arguments", "options",
+            "params", "formatter", "environment", "working_directory", "timeout",
+            "schema_version", "version", "changelog"
+        }
+        subcommands = []
+        for key, value in node.items():
+            if key in reserved:
+                continue
+            if isinstance(value, dict):
+                subcommands.append((key, value.get("description", "")))
+        return subcommands
+
+    def _show_group_usage_if_needed(self, args: list[str]) -> bool:
+        """Show group usage if args point to a group node without a command."""
+        if not args:
+            return False
+        if args[0].startswith("-"):
+            return False
+
+        node = self._find_node_for_path(args)
+        if node is None:
+            return False
+
+        if "command" in node:
+            return False
+
+        subcommands = self._get_group_subcommands(node)
+        if not subcommands:
+            return False
+
+        alias_name = self._runtime_context.get("alias_name") or "xts"
+        prefix = f"xts {alias_name}" if alias_name != "xts" else "xts"
+        command_path = " ".join(args)
+
+        console = Console()
+        console.print(f"\n[bold yellow]Subcommands for '{command_path}':[/bold yellow]")
+        for name, desc in subcommands:
+            if desc:
+                console.print(f"  [bold green]{name:<20}[/bold green] [dim]{desc}[/dim]")
+            else:
+                console.print(f"  [bold green]{name}[/bold green]")
+        console.print(f"\n[dim]Use [bold cyan]{prefix} {command_path} <subcommand>[/bold cyan][/dim]")
+        return True
+
     @staticmethod
     def _inject_standard_functions(config: dict) -> dict:
         """Merge standard library functions into the config.
@@ -745,7 +838,10 @@ class XTS():
                 plugin().run(args)
         else:
             try:
-                config = self._inject_standard_functions(self._command_sections)
+                if self._show_group_usage_if_needed(args):
+                    raise SystemExit(0)
+
+                config = self._inject_standard_functions(self._command_tree())
                 yaml_runner = YamlRunner(config,
                         program='xts',
                         hierarchical=True,
@@ -756,7 +852,7 @@ class XTS():
                 # This code should be unreachable, but is handled just in case.
                 error('An unrecognised command has caused and error\n\n'+
                       f'Command Args: [{" ".join(args)}]\n\n'+
-                      e)
+                      str(e))
 
 def main():
     XTS().run()
