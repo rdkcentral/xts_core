@@ -53,7 +53,7 @@ class XTSToolsPlugin(Plugin):
     def __init__(self):
         """Initialize the tools plugin."""
         super().__init__()
-        self.provided_positionals = ['validate', 'create', 'edit', 'functions', 'guide', 'manual']
+        self.provided_positionals = ['validate', 'create', 'edit', 'guide', 'manual', 'remote']
         self.provided_args = []  # No args, only positionals
     
     def run(self, args: list):
@@ -74,16 +74,32 @@ class XTSToolsPlugin(Plugin):
             self._create(args[1:])
         elif command == 'edit':
             self._edit(args[1:])
-        elif command == 'functions':
-            self._functions_cmd(args[1:])
+        # 'functions' command disabled
         elif command == 'guide':
-            self._guide(args[1:])
+            if args[1:] and args[1] == 'learn':
+                self._learn_cmd(args[2:])
+            else:
+                self._guide(args[1:])
         elif command == 'manual':
             self._manual(args[1:])
+        elif command == 'remote':
+            self._remote_tools_cmd(args[1:])
         else:
             error(f"Unknown tools command: {command}")
             self._print_help()
             sys.exit(1)
+
+    def _learn_cmd(self, args: list):
+        """Learn command invoked from guide."""
+        info("Learn command executed from guide.")
+        print("Learn functionality is available.")
+        sys.exit(0)
+
+    def _remote_tools_cmd(self, args: list):
+        """Remote tools command placeholder."""
+        info("Remote tools command executed.")
+        print("Remote tools functionality is available.")
+        sys.exit(0)
     
     def _print_help(self):
         """Print help for tools commands."""

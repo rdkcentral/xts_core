@@ -171,11 +171,8 @@ xts alias add mytools ~/projects/tools.xts
 # Add a remote alias
 xts alias add demo https://example.com/demo.xts
 
-# Add remote alias through a proxy
-xts alias add sky http://server:5000/allocator.xts \
-    --proxy proxy.example.com:8080 \
-    --proxy-username user \
-    --proxy-password pass
+# Add remote alias (proxy support is disabled)
+xts alias add sky http://server:5000/allocator.xts
 
 # Use the alias
 xts mytools some_command
@@ -187,7 +184,7 @@ xts alias list
 xts alias refresh demo
 ```
 
-**Proxy Support**: When adding remote aliases behind a corporate firewall or proxy, use the `--proxy`, `--proxy-username`, and `--proxy-password` options. The proxy configuration is saved with the alias and automatically used for updates and refreshes.
+**Proxy Support**: Proxy functionality is currently disabled in this version.
 
 ### Write a custom .xts file
 Any file with the extension `.xts` will be picked up by the tool. Therefore, creating a file with this extension and filling it with valid command definitions will create a custom `.xts` file.
@@ -212,8 +209,8 @@ xts guide commands       # Command definitions (simple, multiline, lists, args, 
 xts guide func           # Functions system (define, stdlib, usage)
 xts guide structure      # .xts file structure (metadata, groups, nesting)
 xts guide aliases        # Alias management (add, manage, remote)
-xts guide tools          # Built-in tools (validate, create, functions)
-xts guide advanced       # Advanced topics (proxy, yaml_runner, tips)
+xts guide tools          # Built-in tools (validate, create)
+xts guide advanced       # Advanced topics (yaml_runner, tips)
 xts guide quickref       # Quick reference card
 
 # Dive into specific lessons
@@ -248,8 +245,6 @@ For in-depth documentation, refer to the markdown files in the repository:
 ```bash
 xts validate myconfig.xts     # Validate .xts file schema and syntax
 xts create newproject.xts      # Interactive wizard to create .xts files
-xts functions list             # List standard library functions
-xts functions show format_json # Show function details
 ```
 
 ## How It Works

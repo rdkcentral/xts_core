@@ -31,11 +31,11 @@ Provides a prompted workflow for building .xts files with support for:
 - Validation and testing
 """
 
-import json
 import os
-import re
-import signal
 import sys
+import re
+import json
+import signal
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
@@ -48,7 +48,7 @@ except ImportError:
 try:
     from .utils import error, warning, success, info
     from .xts_validator import XTSValidator
-except:
+except ImportError:
     from xts_core.utils import error, warning, success, info
     from xts_core.xts_validator import XTSValidator
 

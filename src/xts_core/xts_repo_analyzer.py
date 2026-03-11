@@ -234,32 +234,7 @@ class RepoAnalyzer:
                 print(f"  Warning: Error fetching {filename}: {e}")
     
     def analyze(self) -> Dict:
-        """Run full repository analysis."""
-        if not self.repo_path.exists():
-            raise FileNotFoundError(f"Repository path not found: {self.repo_path}")
-            
-        # Detect language and ecosystem
-        self._detect_language()
-        
-        # Detect build systems
-        self._detect_build_system()
-        
-        # Detect test frameworks
-        self._detect_test_framework()
-        
-        # Extract package manager scripts
-        self._extract_package_scripts()
-        
-        # Parse Makefile
-        self._parse_makefile()
-        
-        # Parse README for commands
-        self._parse_readme()
-        
-        # Detect CI/CD configurations
-        self._detect_ci_cd()
-        
-        return self.findings
+        raise NotImplementedError("analyze command is disabled")
     
     def _detect_language(self):
         """Detect primary programming language."""
@@ -575,67 +550,6 @@ Examples:
         help='Output analysis as JSON'
     )
     
-    args = parser.parse_args()
-    
-    try:
-        # Analyze repository
-        analyzer = RepoAnalyzer(args.repo_path)
-        findings = analyzer.analyze()
-        
-        if args.json:
-            # Output JSON
-            print(json.dumps(findings, indent=2))
-        elif args.verbose:
-            # Show detailed analysis
-            print("\n" + "=" * 70)
-            print("  Repository Analysis")
-            print("=" * 70 + "\n")
-            
-            print(f"Path: {analyzer.repo_path}")
-            print(f"Language: {findings['language'] or 'Unknown'}")
-            print(f"Build System: {findings['build_system'] or 'None detected'}")
-            print(f"Test Framework: {findings['test_framework'] or 'None detected'}")
-            print(f"Package Manager: {findings['package_manager'] or 'None detected'}")
-            
-            if findings['scripts']:
-                print(f"\nPackage Scripts: {len(findings['scripts'])} found")
-                for name, cmd in findings['scripts'].items():
-                    print(f"  - {name}: {cmd}")
-            
-            if findings['commands']:
-                print(f"\nMakefile Targets: {len(findings['commands'])} found")
-                for target, cmd in findings['commands'].items():
-                    print(f"  - {target}: {cmd}")
-            
-            if findings['readme_commands']:
-                print(f"\nREADME Commands: {len(findings['readme_commands'])} found")
-                for cmd in findings['readme_commands'][:5]:
-                    print(f"  - {cmd}")
-                if len(findings['readme_commands']) > 5:
-                    print(f"  ... and {len(findings['readme_commands']) - 5} more")
-            
-            print("\n" + "=" * 70)
-            print("\nTo generate AI prompt: xts analyze . --output ai_prompt.txt")
-            print("=" * 70 + "\n")
-        else:
-            # Generate and display/save AI prompt
-            prompt = analyzer.generate_ai_prompt(args.output)
-            
-            if not args.output:
-                print(prompt)
-        
-        return 0
-        
-    except FileNotFoundError as e:
-        print(f"Error: {e}")
-        return 1
-    except Exception as e:
-        print(f"Error analyzing repository: {e}")
-        if args.verbose:
-            import traceback
-            traceback.print_exc()
-        return 1
 
-
-if __name__ == '__main__':
-    exit(main())
+    print("The analyze command is disabled.")
+    exit(1)

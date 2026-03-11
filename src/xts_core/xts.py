@@ -345,21 +345,21 @@ class XTS():
         pre_parser.add_argument('--version', '-v', action='version', version=f'xts {__version__}')
         pre_subparsers = pre_parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(pre_subparsers)
-        self._add_proxy_subcommands(pre_subparsers)
+        # self._add_proxy_subcommands(pre_subparsers)  # Proxy disabled
 
         if len(sys.argv) > 1 and sys.argv[1] == "alias":
             parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
             self._handle_alias(parsed_args)
             sys.exit(0)
         
-        if len(sys.argv) > 1 and sys.argv[1] == "proxy":
-            parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
-            self._handle_proxy(parsed_args)
-            sys.exit(0)
+        # if len(sys.argv) > 1 and sys.argv[1] == "proxy":
+        #     parsed_args = pre_parser.parse_args(sys.argv[1:])  # parse everything after 'xts'
+        #     self._handle_proxy(parsed_args)
+        #     sys.exit(0)
 
         # Early dispatch for plugin positionals (validate, create, edit, functions, etc.)
         # Core commands are protected and cannot be overridden by plugins.
-        _CORE_COMMANDS = {"alias", "proxy", "--help", "-h", "--version", "-v"}
+        _CORE_COMMANDS = {"alias", "--help", "-h", "--version", "-v"}  # Proxy removed
         if len(sys.argv) > 1 and sys.argv[1] not in _CORE_COMMANDS:
             for plugin_cls in self._plugins:
                 if sys.argv[1] in plugin_cls().provided_positionals:
@@ -380,7 +380,7 @@ class XTS():
         parser = RichArgumentParser(prog="xts")
         subparsers = parser.add_subparsers(dest="command", required=True)
         self._add_alias_subcommands(subparsers)
-        self._add_proxy_subcommands(subparsers)
+        # self._add_proxy_subcommands(subparsers)  # Proxy disabled
 
         command_list = list(self._get_command_choices())
         for command, description in command_list:
@@ -418,7 +418,7 @@ class XTS():
                 - The resolved .xts file path (local or cached).
                 - None if no resolution could be performed.
         """
-        if arg in ("alias", "proxy"):
+        if arg == "alias":
             return arg
 
         # Local file provided directly
@@ -566,31 +566,7 @@ class XTS():
         Args:
             subparsers (argparse._SubParsersAction): The subparsers object to attach proxy commands to.
         """
-        proxy_parser = subparsers.add_parser('proxy', help='Manage proxy configurations', formatter_class=RichHelpFormatter)
-        proxy_subparsers = proxy_parser.add_subparsers(dest='proxy_cmd', required=True)
-
-        # proxy add <name> <proxy> [--type <type>] [--username <user>] [--password <pass>]
-        add_parser = proxy_subparsers.add_parser('add', 
-            help='Add a proxy configuration',
-            formatter_class=RichHelpFormatter)
-        add_parser.add_argument('name', 
-            help='Proxy name/identifier (e.g., sky)')
-        add_parser.add_argument('proxy',
-            help='Proxy server (format: host:port or protocol://host:port)')
-        add_parser.add_argument('--type', type=str, default='http',
-            choices=['http', 'https', 'socks5', 'ssh'],
-            help='Proxy type (default: http)')
-        add_parser.add_argument('--username', type=str, default=None,
-            help='Proxy username (optional)')
-        add_parser.add_argument('--password', type=str, default=None,
-            help='Proxy password (optional)')
-
-        # proxy list
-        list_parser = proxy_subparsers.add_parser('list', help='List all proxy configurations', formatter_class=RichHelpFormatter)
-
-        # proxy remove <name>
-        remove_parser = proxy_subparsers.add_parser('remove', help='Remove a proxy configuration', formatter_class=RichHelpFormatter)
-        remove_parser.add_argument('name', help='Name of the proxy to remove')
+        pass  # Proxy command disabled
     
     def _handle_proxy(self, parsed_args):
         """
@@ -833,6 +809,16 @@ class XTS():
             SystemExit: Raised when unrecogised arguments are given.
         """
         args = self._parse_first_arg()
+        # Validate filename for create command
+        if args and args[0] == "create":
+            # Only allow valid filenames, not options like '--help'
+            if len(args) > 1:
+                filename = args[1]
+                import re
+                # Disallow filenames that start with '-' or are not .xts files
+                if filename.startswith("-") or not re.match(r'^[\w\-.]+\.xts$', filename):
+                    error(f"Invalid filename for create: {filename}")
+                    sys.exit(1)
         if plugins := list(filter(lambda x: args[0] in x().provided_positionals,self._plugins)):
             for plugin in plugins:
                 plugin().run(args)
