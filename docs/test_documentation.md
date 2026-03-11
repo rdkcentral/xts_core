@@ -1,53 +1,58 @@
 # XTS Core Test Specification #
 
-
-This document defines the expected behavior of XTS core across different use cases, focusing on the new alias-only method of operation. All test case execution and command orchestration must be performed via registered aliases. Direct execution or discovery of .xts files in the current directory is no longer supported.
+This document defines the expected behavior of XTS core across different use cases, including its interaction with .xts files and YAML file execution.
 
 The test specification covers the following scenarios:
 
-- Usage with aliases referencing structured and unstructured .xts files
-- Operation when no alias is present
+- Usage with structured and unstructured .xts files
 
+- Operation without .xts files
 
-### Handling of Aliases and .xts Files ###
+### Handling of .xts Files ###
 
-#### Structured .xts File via Alias ####
-
-Preconditions: A valid .xts file with structured data is registered as an alias (e.g., `xts --alias /path/to/yourfile.xts --name myalias`).
+#### Structured .xts File ####
+git p
+Preconditions: A valid .xts file with structured data is available.
 
 Expected Behavior:
 
-- XTS should correctly parse and load the .xts file via the alias.
-- Execution should proceed without errors when invoked as `xts myalias <group> <command>`.
+- XTS should correctly parse and load the .xts file.
+
+- Execution should proceed without errors.
+
 - The expected test cases should run and produce correct results.
 
-#### Unstructured .xts File via Alias ####
+#### Unstructured .xts File ####
 
-Preconditions: A malformed or incorrectly structured .xts file is registered as an alias.
+Preconditions: A malformed or incorrectly structured .xts file is present.
 
 Expected Behavior:
 
-- XTS should detect the malformed structure and log an appropriate error when the alias is used.
+- XTS should detect the malformed structure and log an appropriate error.
+
 - Execution should fail gracefully without crashes.
 
-#### No Alias Registered ####
+#### No .xts File ####
 
-Preconditions: No alias is registered for the desired .xts file.
-
-Expected Behavior:
-
-- XTS should log a clear error message indicating that the alias is missing.
-- Execution of test cases should not proceed.
-- AllocatorClient commands should remain functional and usable.
-
-#### Multiple Aliases Registered ####
-
-Preconditions: More than one alias is registered, each referencing a different .xts file.
+Preconditions: No .xts file is provided.
 
 Expected Behavior:
 
-- XTS should allow the user to select the desired alias for execution.
-- The user should be shown how to run each alias individually using the appropriate command (e.g., `xts myalias1 ...`, `xts myalias2 ...`).
+- XTS should log a clear error message indicating the file is missing.
+- Execution of test cases and allocator-related subcommands via `xts` should not proceed.
+- This scenario validates correct error handling in alias-only mode; no allocator commands are expected to run when invoked through `xts` without a valid alias.
+
+#### Multiple .xts Files ####
+
+Preconditions: More than one .xts file is present in the working directory.
+
+Expected Behavior:
+
+- XTS should detect the presence of multiple .xts files.
+
+- An error message should be logged, listing the found files.
+
+- The user should be shown how to run each file individually using the appropriate command.
 
 
 ## XTS AllocatorClient Commands ##
