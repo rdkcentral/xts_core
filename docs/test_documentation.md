@@ -11,7 +11,6 @@ The test specification covers the following scenarios:
 ### Handling of .xts Files ###
 
 #### Structured .xts File ####
-git p
 Preconditions: A valid .xts file with structured data is available.
 
 Expected Behavior:
