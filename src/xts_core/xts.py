@@ -263,6 +263,56 @@ class XTS():
             error('xts config specified does not exist')
             raise SystemExit(1)
 
+    def _print_main_help(self):
+        """Print the main help message listing all valid commands."""
+        console = Console()
+        header = Text()
+        header.append("XTS ", style="bold cyan")
+        header.append(f"v{__version__}", style="dim")
+        console.print(Panel(header, border_style="cyan", padding=(0, 1)))
+        console.print("\n[bold]eXtensible Test System[/bold]")
+        console.print("A command-line tool for executing test commands from YAML configuration files.\n")
+        console.print("[dim]Execute commands defined in .xts files using aliases for quick access.[/dim]\n")
+        console.print("[bold yellow]Commands:[/bold yellow]")
+        console.print(f"  [bold green]{'alias':<20}[/bold green] [dim]Manage aliases (add, list, remove, refresh, clean)[/dim]")
+        console.print(f"  [bold green]{'guide':<20}[/bold green] [dim]Interactive XTS tutorial and training[/dim]")
+        console.print(f"  [bold green]{'manual':<20}[/bold green] [dim]Feature summary and documentation links[/dim]")
+        console.print(f"  [bold green]{'validate':<20}[/bold green] [dim]Validate .xts file schema and syntax[/dim]")
+        console.print(f"  [bold green]{'create':<20}[/bold green] [dim]Create new .xts file interactively[/dim]")
+        console.print(f"  [bold green]{'functions':<20}[/bold green] [dim]List standard library functions[/dim]")
+        aliases = xts_alias.list_aliases()
+        if aliases:
+            console.print("\n[bold yellow]Configured Aliases:[/bold yellow]")
+            try:
+                with open(xts_alias.get_alias_file_path()) as f:
+                    alias_config = json.load(f)
+            except:
+                alias_config = {}
+            for alias_name in sorted(aliases.keys()):
+                alias_path = alias_config.get(alias_name, "")
+                # Only handle alias_path if it's a string
+                if isinstance(alias_path, str) and alias_path:
+                    display_path = os.path.basename(alias_path) if not is_url(alias_path) else alias_path
+                    console.print(f"  [bold cyan]{alias_name:<20}[/bold cyan] [dim]{display_path}[/dim]")
+                elif not alias_path:
+                    console.print(f"  [bold cyan]{alias_name}[/bold cyan]")
+                else:
+                    # If alias_path is not a string, skip or print a warning
+                    console.print(f"  [bold cyan]{alias_name:<20}[/bold cyan] [dim][invalid alias entry][/dim]")
+            console.print("\n[bold]Usage:[/bold]")
+            console.print("  [cyan]xts <alias> <command> [options][/cyan]")
+            console.print("  [cyan]xts <alias> --help[/cyan]              - Show commands for an alias")
+            console.print("  [cyan]xts alias list[/cyan]                  - Show all aliases with details")
+            console.print("\n[dim]Example: [bold cyan]xts allocator list_slots[/bold cyan][/dim]")
+        else:
+            console.print("\n[yellow]No aliases configured yet.[/yellow]")
+            console.print("\n[bold]Get started:[/bold]")
+            console.print("  [cyan]xts alias add <name> <path>[/cyan]  - Add a single .xts file")
+            console.print("  [cyan]xts alias add .[/cyan]              - Add all .xts files in current directory")
+            console.print("  [cyan]xts alias add -r <dir>[/cyan]       - Recursively add .xts files")
+            console.print("\n[dim]Example: [bold cyan]xts alias add allocator http://server:5000/xts_allocator.xts[/bold cyan][/dim]")
+        console.print("\n[dim]For more information: [bold]xts --help[/bold] or [bold]xts alias --help[/bold][/dim]")
+
     def _parse_first_arg(self):
         """
         Parse CLI arguments and set up argparse for all commands.
@@ -275,69 +325,18 @@ class XTS():
         """
         # If no arguments provided, show help with available aliases
         if len(sys.argv) == 1:
-            console = Console()
-            
-            # Header with version
-            header = Text()
-            header.append("XTS ", style="bold cyan")
-            header.append(f"v{__version__}", style="dim")
-            console.print(Panel(header, border_style="cyan", padding=(0, 1)))
-            
-            # Description
-            console.print("\n[bold]eXtensible Test System[/bold]")
-            console.print("A command-line tool for executing test commands from YAML configuration files.\n")
-            console.print("[dim]Execute commands defined in .xts files using aliases for quick access.[/dim]\n")
-            
-            # Built-in commands
-            console.print("[bold yellow]Commands:[/bold yellow]")
-            console.print(f"  [bold green]{'alias':<20}[/bold green] [dim]Manage aliases (add, list, remove, refresh, clean)[/dim]")
-            console.print(f"  [bold green]{'guide':<20}[/bold green] [dim]Interactive XTS tutorial and training[/dim]")
-            console.print(f"  [bold green]{'manual':<20}[/bold green] [dim]Feature summary and documentation links[/dim]")
-            console.print(f"  [bold green]{'validate':<20}[/bold green] [dim]Validate .xts file schema and syntax[/dim]")
-            console.print(f"  [bold green]{'create':<20}[/bold green] [dim]Create new .xts file interactively[/dim]")
-            console.print(f"  [bold green]{'functions':<20}[/bold green] [dim]List standard library functions[/dim]")
-            
-            # Show available aliases
-            aliases = xts_alias.list_aliases()
-            if aliases:
-                console.print("\n[bold yellow]Configured Aliases:[/bold yellow]")
-                # Load alias file to get source paths
-                try:
-                    with open(xts_alias.get_alias_file_path()) as f:
-                        alias_config = json.load(f)
-                except:
-                    alias_config = {}
-                
-                for alias_name in sorted(aliases.keys()):
-                    alias_path = alias_config.get(alias_name, "")
-                    # Show just the filename or last part of path
-                    if alias_path:
-                        display_path = os.path.basename(alias_path) if not is_url(alias_path) else alias_path
-                        console.print(f"  [bold cyan]{alias_name:<20}[/bold cyan] [dim]{display_path}[/dim]")
-                    else:
-                        console.print(f"  [bold cyan]{alias_name}[/bold cyan]")
-                
-                console.print("\n[bold]Usage:[/bold]")
-                console.print("  [cyan]xts <alias> <command> [options][/cyan]")
-                console.print("  [cyan]xts <alias> --help[/cyan]              - Show commands for an alias")
-                console.print("  [cyan]xts alias list[/cyan]                  - Show all aliases with details")
-                console.print("\n[dim]Example: [bold cyan]xts allocator list_slots[/bold cyan][/dim]")
-            else:
-                # No aliases yet, show how to add them
-                console.print("\n[yellow]No aliases configured yet.[/yellow]")
-                console.print("\n[bold]Get started:[/bold]")
-                console.print("  [cyan]xts alias add <name> <path>[/cyan]  - Add a single .xts file")
-                console.print("  [cyan]xts alias add .[/cyan]              - Add all .xts files in current directory")
-                console.print("  [cyan]xts alias add -r <dir>[/cyan]       - Recursively add .xts files")
-                console.print("\n[dim]Example: [bold cyan]xts alias add allocator http://server:5000/xts_allocator.xts[/bold cyan][/dim]")
-            
-            console.print("\n[dim]For more information: [bold]xts --help[/bold] or [bold]xts alias --help[/bold][/dim]")
+            self._print_main_help()
             sys.exit(0)
         
         # Handle --version flag
         if len(sys.argv) > 1 and sys.argv[1] in ['--version', '-v']:
             console = Console()
             console.print(f"[bold cyan]xts[/bold cyan] version [bold]{__version__}[/bold]")
+            sys.exit(0)
+
+        # Handle --help flag
+        if len(sys.argv) > 1 and sys.argv[1] in ['--help', '-h']:
+            self._print_main_help()
             sys.exit(0)
         
         # quick parser for alias commands

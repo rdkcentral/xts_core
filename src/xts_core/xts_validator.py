@@ -332,7 +332,40 @@ def validate_command(filepath: str, verbose: bool = False, json_output: bool = F
     """
     validator = XTSValidator()
     is_valid, errors_list, warnings_list = validator.validate_file(filepath, verbose)
-    
+
+    def print_invalid_line(err_msg):
+        # Try to extract command name or line number from error message
+        import re
+        # Match command 'name' or Command 'name'
+        m = re.search(r"[Cc]ommand '([\w\.]+)'", err_msg)
+        if not m:
+            return
+        cmd_path = m.group(1)
+        # Try to find and print the relevant line from the file
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            # Print lines containing the command path as a key
+            found = False
+            for i, line in enumerate(lines):
+                if re.match(rf"^\s*{re.escape(cmd_path)}\s*:", line):
+                    print(f"    > {line.rstrip()}")
+                    # Optionally print the next few lines for context
+                    for j in range(1, 4):
+                        if i + j < len(lines):
+                            print(f"      {lines[i+j].rstrip()}")
+                    found = True
+                    break
+            if not found:
+                # Try to find as a nested key (e.g., parent.child)
+                parts = cmd_path.split('.')
+                for i, line in enumerate(lines):
+                    if all(part in line for part in parts):
+                        print(f"    > {line.rstrip()}")
+                        break
+        except Exception:
+            pass
+
     if json_output:
         result = {
             "file": filepath,
@@ -344,26 +377,27 @@ def validate_command(filepath: str, verbose: bool = False, json_output: bool = F
     else:
         # Human-readable output
         print(f"\nValidating: {filepath}\n")
-        
+
         if errors_list:
             error(f"✗ Found {len(errors_list)} error(s):")
             for err in errors_list:
                 print(f"  • {err}")
+                print_invalid_line(err)
             print()
-        
+
         if warnings_list:
             warning(f"⚠ Found {len(warnings_list)} warning(s):")
             for warn in warnings_list:
                 print(f"  • {warn}")
             print()
-        
+
         if is_valid and not warnings_list:
             success(f"✓ Validation passed - file is valid!")
         elif is_valid:
             success(f"✓ Validation passed with {len(warnings_list)} warning(s)")
         else:
             error("✗ Validation failed")
-    
+
     return 0 if is_valid else 1
 
 
