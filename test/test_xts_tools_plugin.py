@@ -30,7 +30,7 @@ class TestXTSToolsPluginInitialization:
         assert 'functions' in plugin.provided_positionals
         assert 'guide' in plugin.provided_positionals
         assert 'manual' in plugin.provided_positionals
-        assert len(plugin.provided_positionals) == 6
+        assert len(plugin.provided_positionals) == 7
     
     def test_plugin_provided_args(self):
         """Test plugin declares provided args list."""
