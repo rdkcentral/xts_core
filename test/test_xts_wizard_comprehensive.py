@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Comprehensive tests for xts_wizard.py to achieve 70%+ coverage.
 
-Tests the interactive command/function creation, editing, deletion, validation,
+Tests the interactive command creation, editing, deletion, validation,
 and full workflow execution paths that were previously untested.
 """
 
@@ -28,9 +28,7 @@ class TestWizardRun:
         'Test description',   # description
         'echo "hello"',       # command
         'n',                  # add arguments?
-        'n',                  # add formatter?
-        'n',                  # add another command?
-        'n'                   # add functions?
+        'n'                   # add another command?
     ])
     def test_run_create_workflow_success(self, mock_input, tmp_path):
         """Test successful create workflow execution."""
@@ -50,9 +48,7 @@ class TestWizardRun:
         'Test description',   # description
         'invalid_command',    # invalid command
         'n',                  # add arguments?
-        'n',                  # add formatter?
         'n',                  # add another command?
-        'n',                  # add functions?
         'n'                   # save progress?
     ])
     def test_run_create_workflow_validation_fails(self, mock_input, tmp_path):
@@ -99,7 +95,7 @@ class TestWizardRun:
         wizard = XTSWizard(filepath_str, edit_mode=True)
         
         # Mock input to exit edit menu immediately
-        with patch('builtins.input', return_value='7'):  # Option 7 = Done editing
+        with patch('builtins.input', return_value='4'):  # Option 4 = Done editing
             with patch.object(wizard.validator, 'validate_file', return_value=(True, [], [])):
                 result = wizard.run(resume=False)
         
@@ -124,8 +120,7 @@ class TestAddCommand:
         'build',                # command name
         'Build the project',    # description
         'make all',             # command
-        'n',                    # add arguments?
-        'n'                     # add formatter?
+        'n'                     # add arguments?
     ])
     def test_add_command_minimal(self, mock_input, tmp_path):
         """Test adding minimal command."""
@@ -148,12 +143,10 @@ class TestAddCommand:
         'target',               # arg name
         'Build target',         # arg description
         'y',                    # required? yes
-        'n',                    # add another arg? no
-        'y',                    # add formatter? yes
-        'format_output'         # formatter
+        'n'                     # add another arg? no
     ])
-    def test_add_command_with_args_and_formatter(self, mock_input, tmp_path):
-        """Test adding command with arguments and formatter."""
+    def test_add_command_with_args(self, mock_input, tmp_path):
+        """Test adding command with arguments."""
         filepath = str(tmp_path / "test.xts")
         wizard = XTSWizard(filepath)
         
@@ -164,20 +157,17 @@ class TestAddCommand:
         assert len(cmd['args']) == 1
         assert cmd['args'][0]['name'] == 'target'
         assert cmd['args'][0]['required'] is True
-        assert cmd['formatter'] == 'format_output'
     
     @patch('builtins.input', side_effect=[
         'test',                 # first command
         'Test',                 # description
         'echo "test"',          # command
         'n',                    # add arguments?
-        'n',                    # add formatter?
         'test',                 # try to add duplicate
         'test2',                # valid unique name
         'Test 2',               # description
         'echo "test2"',         # command
-        'n',                    # add arguments?
-        'n'                     # add formatter?
+        'n'                     # add arguments?
     ])
     def test_add_command_duplicate_name_rejected(self, mock_input, tmp_path):
         """Test that duplicate command names are rejected."""
@@ -244,43 +234,6 @@ class TestPromptForArg:
         arg = wizard._prompt_for_arg()
         
         assert arg is None
-
-
-class TestAddFunction:
-    """Test _add_function() method."""
-    
-    @patch('builtins.input', side_effect=[
-        'format_json',          # function name
-        'Format as JSON',       # description
-        'jq .'                  # command
-    ])
-    def test_add_function_success(self, mock_input, tmp_path):
-        """Test adding function successfully."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard._add_function()
-        
-        assert 'format_json' in wizard.state.config['functions']
-        func = wizard.state.config['functions']['format_json']
-        assert func['command'] == 'jq .'
-        assert func['description'] == 'Format as JSON'
-    
-    @patch('builtins.input', side_effect=[
-        '',                     # empty name (invalid)
-        'invalid-name',         # invalid with dash
-        'valid_func',           # valid name
-        'Description',          # description
-        'cat'                   # command
-    ])
-    def test_add_function_name_validation(self, mock_input, tmp_path):
-        """Test function name validation."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard._add_function()
-        
-        assert 'valid_func' in wizard.state.config['functions']
 
 
 class TestEditCommand:
@@ -441,77 +394,6 @@ class TestDeleteCommand:
         
         # Should return without modifying
         assert 'test_cmd' in wizard.state.config['commands']
-
-
-class TestEditFunction:
-    """Test _edit_function() method."""
-    
-    def test_edit_function_no_functions(self, tmp_path):
-        """Test editing when no functions exist."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard._edit_function()
-        
-        # Should return without error
-        assert True
-    
-    @patch('builtins.input', side_effect=[
-        'format_json',          # function to edit
-        'Updated description',  # new description
-        'jq -c .'               # new command
-    ])
-    def test_edit_function_success(self, mock_input, tmp_path):
-        """Test editing function successfully."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard.state.config['functions'] = {
-            'format_json': {
-                'description': 'Old description',
-                'command': 'jq .'
-            }
-        }
-        
-        wizard._edit_function()
-        
-        func = wizard.state.config['functions']['format_json']
-        assert func['description'] == 'Updated description'
-        assert func['command'] == 'jq -c .'
-
-
-class TestDeleteFunction:
-    """Test _delete_function() method."""
-    
-    def test_delete_function_no_functions(self, tmp_path):
-        """Test deleting when no functions exist."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard._delete_function()
-        
-        # Should return without error
-        assert True
-    
-    @patch('builtins.input', side_effect=[
-        'format_json',          # function to delete
-        'y'                     # confirm deletion
-    ])
-    def test_delete_function_success(self, mock_input, tmp_path):
-        """Test deleting function successfully."""
-        filepath = str(tmp_path / "test.xts")
-        wizard = XTSWizard(filepath)
-        
-        wizard.state.config['functions'] = {
-            'format_json': {
-                'description': 'Format JSON',
-                'command': 'jq .'
-            }
-        }
-        
-        wizard._delete_function()
-        
-        assert 'format_json' not in wizard.state.config['functions']
 
 
 class TestValidateConfig:
@@ -761,9 +643,7 @@ class TestCreateWorkflow:
         'Test',                 # description
         'echo "test"',          # command
         'n',                    # add arguments?
-        'n',                    # add formatter?
-        'n',                    # add another command?
-        'n'                     # add functions?
+        'n'                     # add another command?
     ])
     def test_create_workflow_minimal(self, mock_input, tmp_path):
         """Test create workflow with minimal input."""
@@ -778,7 +658,7 @@ class TestCreateWorkflow:
 class TestEditWorkflow:
     """Test _edit_workflow() method."""
     
-    @patch('builtins.input', return_value='7')  # Option 7 = Done editing
+    @patch('builtins.input', return_value='4')  # Option 4 = Done editing
     def test_edit_workflow_done_immediately(self, mock_input, tmp_path):
         """Test edit workflow exits immediately."""
         filepath = str(tmp_path / "test.xts")
@@ -802,8 +682,7 @@ class TestEditWorkflow:
         'New command',          # description
         'echo "new"',           # command
         'n',                    # add arguments?
-        'n',                    # add formatter?
-        '7'                     # Done editing
+        '4'                     # Done editing
     ])
     def test_edit_workflow_add_command(self, mock_input, tmp_path):
         """Test edit workflow adds command."""

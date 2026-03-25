@@ -279,7 +279,6 @@ class XTS():
         console.print(f"  [bold green]{'manual':<20}[/bold green] [dim]Feature summary and documentation links[/dim]")
         console.print(f"  [bold green]{'validate':<20}[/bold green] [dim]Validate .xts file schema and syntax[/dim]")
         console.print(f"  [bold green]{'create':<20}[/bold green] [dim]Create new .xts file interactively[/dim]")
-        console.print(f"  [bold green]{'functions':<20}[/bold green] [dim]List standard library functions[/dim]")
         aliases = xts_alias.list_aliases()
         if aliases:
             console.print("\n[bold yellow]Configured Aliases:[/bold yellow]")
@@ -356,7 +355,7 @@ class XTS():
         #     self._handle_proxy(parsed_args)
         #     sys.exit(0)
 
-        # Early dispatch for plugin positionals (validate, create, edit, functions, etc.)
+        # Early dispatch for plugin positionals (validate, create, edit, etc.)
         # Core commands are protected and cannot be overridden by plugins.
         _CORE_COMMANDS = {"alias", "--help", "-h", "--version", "-v"}  # Proxy removed
         if len(sys.argv) > 1 and sys.argv[1] not in _CORE_COMMANDS:

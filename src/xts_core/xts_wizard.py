@@ -27,7 +27,6 @@ Provides a prompted workflow for building .xts files with support for:
 - Progress saving on CTRL-C interruption
 - Resume from saved state
 - Command creation and editing
-- Function definition
 - Validation and testing
 """
 
@@ -59,7 +58,7 @@ class WizardState:
     def __init__(self, filepath: str):
         self.filepath = filepath
         self.state_file = f"{filepath}.xts-wizard-state"
-        self.config = {"commands": {}, "functions": {}}
+        self.config = {"commands": {}}
         self.current_step = "start"
         self.interrupted = False
     
@@ -195,35 +194,21 @@ class XTSWizard:
             more = input("\nAdd another command? (y/n): ").strip().lower()
             if more != 'y':
                 break
-        
-        # Ask about functions
-        print("\n" + "-" * 70)
-        add_funcs = input("Add reusable functions? (y/n): ").strip().lower()
-        if add_funcs == 'y':
-            while True:
-                self._add_function()
-                more = input("\nAdd another function? (y/n): ").strip().lower()
-                if more != 'y':
-                    break
     
     def _edit_workflow(self):
         """Workflow for editing existing file."""
         while True:
             print("\nCurrent configuration:")
             print(f"  Commands: {len(self.state.config.get('commands', {}))}")
-            print(f"  Functions: {len(self.state.config.get('functions', {}))}")
             print()
             print("Options:")
             print("  1. Add command")
             print("  2. Edit command")
             print("  3. Delete command")
-            print("  4. Add function")
-            print("  5. Edit function")
-            print("  6. Delete function")
-            print("  7. Done editing")
+            print("  4. Done editing")
             print()
             
-            choice = input("Select option (1-7): ").strip()
+            choice = input("Select option (1-4): ").strip()
             
             if choice == '1':
                 self._add_command()
@@ -232,12 +217,6 @@ class XTSWizard:
             elif choice == '3':
                 self._delete_command()
             elif choice == '4':
-                self._add_function()
-            elif choice == '5':
-                self._edit_function()
-            elif choice == '6':
-                self._delete_function()
-            elif choice == '7':
                 break
             else:
                 warning("Invalid choice")
@@ -287,13 +266,6 @@ class XTSWizard:
                 if more != 'y':
                     break
         
-        # Add formatter
-        add_formatter = input("\nAdd output formatter? (y/n): ").strip().lower()
-        if add_formatter == 'y':
-            formatter = input("Formatter command or {{function_name}}: ").strip()
-            if formatter:
-                cmd_def['formatter'] = formatter
-        
         if 'commands' not in self.state.config:
             self.state.config['commands'] = {}
         self.state.config['commands'][name] = cmd_def
@@ -322,36 +294,6 @@ class XTSWizard:
                 arg['default'] = default
         
         return arg
-    
-    def _add_function(self):
-        """Interactively add a function."""
-        print("\n" + "=" * 70)
-        print("Adding reusable function")
-        print("=" * 70)
-        
-        while True:
-            name = input("\nFunction name: ").strip()
-            if not name:
-                warning("Name required")
-                continue
-            if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', name):
-                warning("Invalid name")
-                continue
-            break
-        
-        desc = input("Description: ").strip()
-        print("\nCommand (receives stdin):")
-        command = input("> ").strip()
-        
-        if 'functions' not in self.state.config:
-            self.state.config['functions'] = {}
-        
-        self.state.config['functions'][name] = {
-            "description": desc,
-            "command": command
-        }
-        
-        success(f"✓ Function '{name}' added")
     
     def _edit_command(self):
         """Edit existing command."""
@@ -405,55 +347,6 @@ class XTSWizard:
         if confirm == 'y':
             del commands[choice]
             success(f"✓ Command '{choice}' deleted")
-    
-    def _edit_function(self):
-        """Edit existing function."""
-        functions = self.state.config.get('functions', {})
-        if not functions:
-            warning("No functions to edit")
-            return
-        
-        print("\nExisting functions:")
-        for i, name in enumerate(functions.keys(), 1):
-            print(f"  {i}. {name}")
-        
-        choice = input("\nFunction name to edit: ").strip()
-        if choice not in functions:
-            warning("Function not found")
-            return
-        
-        func = functions[choice]
-        
-        desc = input(f"Description [{func.get('description', '')}]: ").strip()
-        if desc:
-            func['description'] = desc
-        
-        command = input(f"Command [{func.get('command', '')}]: ").strip()
-        if command:
-            func['command'] = command
-        
-        success(f"✓ Function '{choice}' updated")
-    
-    def _delete_function(self):
-        """Delete a function."""
-        functions = self.state.config.get('functions', {})
-        if not functions:
-            warning("No functions to delete")
-            return
-        
-        print("\nExisting functions:")
-        for i, name in enumerate(functions.keys(), 1):
-            print(f"  {i}. {name}")
-        
-        choice = input("\nFunction name to delete: ").strip()
-        if choice not in functions:
-            warning("Function not found")
-            return
-        
-        confirm = input(f"Delete '{choice}'? (y/n): ").strip().lower()
-        if confirm == 'y':
-            del functions[choice]
-            success(f"✓ Function '{choice}' deleted")
     
     def _validate_config(self) -> bool:
         """Validate current configuration."""

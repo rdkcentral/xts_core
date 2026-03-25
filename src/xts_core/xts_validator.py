@@ -233,8 +233,6 @@ class XTSValidator:
         functions = config.get('functions', {})
         
         if not functions:
-            if verbose:
-                info("No functions defined")
             return
         
         if verbose:

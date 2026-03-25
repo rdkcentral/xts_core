@@ -218,62 +218,7 @@ commands:
 
 
 # ──────────────────────────────────────────────────────────────────────
-# 4. CLI command
-# ──────────────────────────────────────────────────────────────────────
-
-class TestFunctionsCLI:
-
-    def test_functions_in_provided_positionals(self):
-        plugin = XTSToolsPlugin()
-        assert "functions" in plugin.provided_positionals
-
-    @patch("xts_core.plugins.xts_tools_plugin.XTSToolsPlugin._functions_list")
-    def test_functions_default_is_list(self, mock_list):
-        plugin = XTSToolsPlugin()
-        plugin._functions_cmd([])
-        mock_list.assert_called_once()
-
-    @patch("xts_core.plugins.xts_tools_plugin.XTSToolsPlugin._functions_list")
-    def test_functions_list_subcommand(self, mock_list):
-        plugin = XTSToolsPlugin()
-        plugin._functions_cmd(["list"])
-        mock_list.assert_called_once()
-
-    @patch("xts_core.plugins.xts_tools_plugin.XTSToolsPlugin._functions_show")
-    def test_functions_show_subcommand(self, mock_show):
-        plugin = XTSToolsPlugin()
-        plugin._functions_cmd(["show", "format_json"])
-        mock_show.assert_called_once()
-
-    def test_functions_show_missing_name_exits(self):
-        plugin = XTSToolsPlugin()
-        with pytest.raises(SystemExit):
-            plugin._functions_cmd(["show"])
-
-    def test_functions_show_unknown_name_exits(self):
-        plugin = XTSToolsPlugin()
-        with pytest.raises(SystemExit):
-            plugin._functions_show("nonexistent_func_xyz", get_standard_functions())
-
-    @patch("rich.console.Console.print")
-    def test_functions_list_shows_all_names(self, mock_print):
-        plugin = XTSToolsPlugin()
-        plugin._functions_list(get_standard_functions())
-        output = " ".join(str(call) for call in mock_print.call_args_list)
-        for name in EXPECTED_FUNCTIONS:
-            assert name in output, f"'{name}' not in list output"
-
-    @patch("rich.console.Console.print")
-    def test_functions_show_displays_details(self, mock_print):
-        plugin = XTSToolsPlugin()
-        plugin._functions_show("format_json", get_standard_functions())
-        output = " ".join(str(call) for call in mock_print.call_args_list)
-        assert "format_json" in output
-        assert "jq" in output
-
-
-# ──────────────────────────────────────────────────────────────────────
-# 5. Function expansion
+# 4. Function expansion
 # ──────────────────────────────────────────────────────────────────────
 
 class TestFunctionExpansion:

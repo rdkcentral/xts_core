@@ -222,8 +222,7 @@ class TestCreateWorkflow:
         'Name to greet',            # arg description
         'y',                        # required?
         'n',                        # add another arg?
-        'n',                        # add another command?
-        'n'                         # add functions?
+        'n'                         # add another command?
     ])
     def test_create_new_config(self, mock_input, temp_wizard_dir):
         """Test creating new config file."""

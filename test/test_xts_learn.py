@@ -125,7 +125,7 @@ class TestGuideXtsFile:
         """tools module must have expected lessons."""
         with open(GUIDE_PATH) as f:
             config = yaml.safe_load(f)
-        expected = ['validate', 'create', 'functions_cmd']
+        expected = ['validate', 'create']
         for lesson in expected:
             assert lesson in config['tools'], f"Missing tools lesson: {lesson}"
 
@@ -153,7 +153,7 @@ class TestGuideXtsFile:
             'func': ['define', 'stdlib', 'usage'],
             'structure': ['metadata', 'groups', 'nesting', 'changelog'],
             'aliases': ['add', 'manage', 'remote'],
-            'tools': ['validate', 'create', 'functions_cmd'],
+            'tools': ['validate', 'create'],
             'advanced': ['proxy', 'yaml_runner', 'tips'],
         }
         for module, lessons in modules_with_lessons.items():
@@ -344,7 +344,7 @@ class TestGuideLessonQuality:
             'func': ['define', 'stdlib', 'usage'],
             'structure': ['metadata', 'groups', 'nesting', 'changelog'],
             'aliases': ['add', 'manage', 'remote'],
-            'tools': ['validate', 'create', 'functions_cmd'],
+            'tools': ['validate', 'create'],
             'advanced': ['proxy', 'yaml_runner', 'tips'],
         }
         for module, lessons in modules_with_lessons.items():

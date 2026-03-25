@@ -31,10 +31,6 @@ Usage in .xts files:
     commands:
       my_cmd:
         command: curl -s api/data | {{format_json}}
-
-View available functions:
-    xts functions list
-    xts functions show format_json
 """
 
 STANDARD_FUNCTIONS = {

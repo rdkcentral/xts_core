@@ -29,7 +29,7 @@ _xts_completion() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # Main xts commands
-    opts="alias guide manual validate create edit functions"
+    opts="alias guide manual validate create edit"
     
     # Get aliases from ~/.xts/aliases.json
     if [ -f ~/.xts/aliases.json ]; then
@@ -79,11 +79,6 @@ _xts_completion() {
                     COMPREPLY=( $(compgen -f -X '!*.xts' -- ${cur}) )
                     return 0
                     ;;
-                functions)
-                    # xts functions <subcommand>
-                    COMPREPLY=( $(compgen -W "list show" -- ${cur}) )
-                    return 0
-                    ;;
                 *)
                     # After an alias name, get commands from that alias's .xts file
                     if [[ " $aliases " =~ " ${prev} " ]]; then
@@ -118,7 +113,7 @@ _xts_completion() {
                     func) COMPREPLY=( $(compgen -W "define stdlib usage" -- ${cur}) ) ;;
                     structure) COMPREPLY=( $(compgen -W "metadata groups nesting changelog" -- ${cur}) ) ;;
                     aliases) COMPREPLY=( $(compgen -W "add manage remote" -- ${cur}) ) ;;
-                    tools) COMPREPLY=( $(compgen -W "validate create functions_cmd" -- ${cur}) ) ;;
+                    tools) COMPREPLY=( $(compgen -W "validate create" -- ${cur}) ) ;;
                     advanced) COMPREPLY=( $(compgen -W "proxy yaml_runner tips" -- ${cur}) ) ;;
                 esac
                 return 0
