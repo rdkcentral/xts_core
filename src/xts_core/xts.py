@@ -4,10 +4,7 @@
 # * If not stated otherwise in this file or this component's LICENSE file the
 # * following copyright and licenses apply:
 # *
-# * Copyright 2024 RDK Management
-# *
-# * Licensed under the Apache License, Version 2.0 (the "License");
-# * you may not use this file except in compliance with the License.
+        
 # * You may obtain a copy of the License at
 # *
 # *
@@ -38,6 +35,8 @@ import os
 import re
 import shlex
 import sys
+import json
+from pathlib import Path
 
 import yaml
 try:
@@ -61,8 +60,10 @@ except ImportError:
 
 try:
     from . import xts_alias
+    from .demo import run_demo
 except ImportError:
     from xts_core import xts_alias
+    from xts_core.demo import run_demo
 
 try:
     from .xts_arg_parser import XTSArgumentParser
@@ -173,7 +174,7 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in options ("alias" or "validate")
+        - a built-in option ("alias", "validate", or "demo")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
 
         Returns:
@@ -201,6 +202,12 @@ class XTS():
             add_help=False,
         )
         validate_parser.add_argument('path', nargs='?', help='Path to the .xts file to validate')
+
+        first_arg_subparsers.add_parser(
+            'demo',
+            help='Run the interactive XTS demo',
+            add_help=False,
+        )
         return first_arg_parser
 
     def _validate_command_value(self, value, path: str):
@@ -241,8 +248,7 @@ class XTS():
         elif isinstance(node, list):
             raise ValueError(
                 f'Invalid .xts structure at "{path}": root-level lists are not supported '
-                'in xts configuration'
-            )
+                'in xts configuration')
 
     def _run_validate_command(self, argv: list[str]):
         """
@@ -353,12 +359,76 @@ class XTS():
                 raise SystemExit(xts_alias.run_alias_builtin(alias_subparser))
             case 'validate':
                 self._run_validate_command(remaining_args if remaining_args else [args.get('path', '')])
+            case 'demo':
+                self._run_demo()
+                raise SystemExit(0)
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)
             case _:
                 self._run_yaml_runner(alias_name, remaining_args)
 
+        try:
+            try:
+                yaml_runner = YamlRunner(
+                    self._command_sections,
+                    program='xts',
+                    hierarchical=True,
+                    fail_fast=True,
+                    parser_class=XTSArgumentParser
+                )
+            except TypeError:
+                yaml_runner = YamlRunner(
+                    self._command_sections,
+                    program='xts',
+                    hierarchical=True,
+                    fail_fast=True
+                )
+
+            _, _, exit_code = yaml_runner.run(args)
+            sys.exit(sorted(exit_code)[-1])
+
+        except Exception as e:
+            error(
+                'An unrecognised command caused an error\n\n'
+                f'Command Args: [{" ".join(args)}]\n\n'
+                f'{str(e)}'
+            )
+
+    def _find_demo_example_config(self) -> str:
+        """Locate the example XTS config used by the interactive demo."""
+        package_root = Path(__file__).resolve().parents[2]
+        example_config = package_root / 'examples' / 'hello_world.xts'
+        if example_config.exists():
+            return str(example_config)
+
+        alt_example = Path.cwd() / 'examples' / 'hello_world.xts'
+        if alt_example.exists():
+            return str(alt_example)
+
+        error(
+            'Could not locate demo example config. Ensure examples/hello_world.xts exists.'
+        )
+
+    def _collect_command_paths(self, section: dict, prefix: list[str] | None = None) -> list[list[str]]:
+        """Recursively collect leaf command paths from a command section."""
+        prefix = prefix or []
+        paths: list[list[str]] = []
+
+        for key, value in section.items():
+            if not isinstance(value, dict):
+                continue
+
+            if 'command' in value:
+                paths.append(prefix + [key])
+
+            paths.extend(self._collect_command_paths(value, prefix + [key]))
+
+        return paths
+
+    def _run_demo(self) -> None:
+        """Run the interactive XTS demo built-in command."""
+        run_demo(self)
 
 def main():
     XTS().run()
