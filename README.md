@@ -127,6 +127,16 @@ To see available commands for an alias:
 xts myalias --help
 ```
 
+### Validate an .xts File
+
+Use the built-in validator to check YAML syntax for an `.xts` file without running it:
+
+```sh
+xts validate /path/to/file.xts
+```
+
+This command reports syntax errors clearly and exits with code `0` for valid files or `1` for invalid files.
+
 ## Example .xts File
 
 ```yaml

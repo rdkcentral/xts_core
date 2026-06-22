@@ -168,9 +168,8 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in options (currently only "alias")
+        - a built-in options (currently only "alias" and "validate")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
-        Direct .xts file usage from cwd or as the first argument is not supported.
 
         Returns:
             list[str]: Remaining args starting with the command name, e.g. ["run", ...].

@@ -6,6 +6,7 @@ from io import StringIO
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
 
+from xts_core.xts import XTS
 from xts_core.xts_alias import (
     add_alias,
     remove_alias,
@@ -101,6 +102,55 @@ def test_multiple_aliases(mock_alias_config, tmp_path):
     add_alias("alias2", str(file2), str(file2))
     aliases = load_aliases()
     assert "alias1" in aliases and "alias2" in aliases
+
+
+def test_validate_xts_file_success(tmp_path):
+    valid_file = tmp_path / "valid.xts"
+    valid_file.write_text(
+        "run:\n"
+        "  hello_world:\n"
+        "    command: echo \"hello world\"\n"
+    )
+
+    with pytest.raises(SystemExit) as excinfo:
+        XTS()._run_validate_command([str(valid_file)])
+
+    assert excinfo.value.code == 0
+
+
+def test_validate_xts_file_syntax_error(tmp_path):
+    invalid_file = tmp_path / "invalid.xts"
+    invalid_file.write_text("not: [valid: yaml")
+
+    with patch('sys.stdout', new=StringIO()) as mock_stdout:
+        with pytest.raises(SystemExit) as excinfo:
+            XTS()._run_validate_command([str(invalid_file)])
+
+    assert excinfo.value.code == 1
+    assert "incorrectly formatted" in mock_stdout.getvalue().lower()
+
+
+def test_validate_xts_file_missing(tmp_path):
+    missing_file = tmp_path / "missing.xts"
+    with patch('sys.stdout', new=StringIO()) as mock_stdout:
+        with pytest.raises(SystemExit) as excinfo:
+            XTS()._run_validate_command([str(missing_file)])
+
+    assert excinfo.value.code == 1
+    assert "does not exist" in mock_stdout.getvalue().lower()
+
+
+def test_validate_xts_file_invalid_structure(tmp_path):
+    invalid_file = tmp_path / "invalid.xts"
+    invalid_file.write_text("run:\n  - name: hello\n    command: echo \"hello\"")
+
+    with patch('sys.stdout', new=StringIO()) as mock_stdout:
+        with pytest.raises(SystemExit) as excinfo:
+            XTS()._run_validate_command([str(invalid_file)])
+
+    assert excinfo.value.code == 1
+    assert "lists are not supported" in mock_stdout.getvalue().lower()
+
 
 def test_allocator_add_slot_missing_args(monkeypatch):
     """Test add-slot with missing required arguments."""
