@@ -37,7 +37,6 @@ import argparse
 import os
 import re
 import sys
-import json
 
 import yaml
 try:
@@ -47,6 +46,7 @@ except ImportError:
 
 import yaml.scanner
 from yaml_runner import YamlRunner
+import argparse_completion
 
 try:
     from .plugins import XTSAllocatorClient
@@ -67,6 +67,8 @@ try:
     from .xts_arg_parser import XTSArgumentParser
 except ImportError:
     from xts_core.xts_arg_parser import XTSArgumentParser
+
+from xts_core.xts_rich_help_formatter import XTSRichHelpFormatter
 
 
 class XTS():
@@ -162,7 +164,7 @@ class XTS():
         return command_sections
     
 
-    def _parse_first_arg(self):
+    def _setup_first_parser(self):
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
@@ -174,63 +176,85 @@ class XTS():
             list[str]: Remaining args starting with the command name, e.g. ["run", ...].
         """
         first_arg_parser = XTSArgumentParser(prog='xts',
+                                             formatter_class=XTSRichHelpFormatter,
                                              add_help=False)
-        first_arg_parser.add_argument('--alias',
-                                      action='store_true',
-                                      help='Add/Remove or list aliases',
-                                      dest='alias_option',
-                                      default=False)
-        args, remaining_args = first_arg_parser.parse_known_args(sys.argv[1:])
+        first_arg_subparsers = first_arg_parser.add_subparsers(dest='alias_name',
+                                                               metavar='')
+        known_aliases = sorted(list(xts_alias.load_aliases()))
+        if len(known_aliases) >= 1:
+            first_arg_subparsers.add_parser('alias_name',
+                                            aliases=known_aliases,
+                                            help='Alias to run commands from.',
+                                            add_help=False)
 
-        if args.alias_option:
-            xts_alias.run_alias_builtin(remaining_args)
-            raise SystemExit(0)
-
-        if not remaining_args:
-            first_arg_parser.print_help()
-            raise SystemExit(0)
-
-        alias_name = remaining_args[0]
-        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(alias_name)
-        
-        if resolved_xts_path is None:
-            error(
-                f'Unknown alias "{alias_name}". '
-                'Use "xts --alias --list" to see available aliases.'
-            )
-            raise SystemExit(1)
-
+        alias_parser = first_arg_subparsers.add_parser('alias',
+                                                        help='Manage aliases (add, list, remove)')
+        xts_alias.setup_alias_parser(alias_parser)
+        return first_arg_parser
+    
+    def _run_yaml_runner(self, alias:str, arguments:list[str]):
+        resolved_xts_path = xts_alias.resolve_alias_to_xts_path(alias)
         # load xts config remove alias name from argv before parsing
         self.xts_config = resolved_xts_path
+        try:
+            yaml_runner = YamlRunner(
+                self._command_sections,
+                program=f'xts {alias}',
+                hierarchical=True,
+                fail_fast=True,
+                parser_class=XTSArgumentParser
+            )
 
-        return remaining_args[1:]
-
+            _, _, exit_code = yaml_runner.run(arguments)
+            raise SystemExit(sorted(exit_code)[-1])
+        except Exception as e:
+                    error(
+                        'An unrecognised command caused an error\n\n'
+                        f'Command Args: [{" ".join(arguments)}]\n\n'
+                        f'{str(e)}')
+    
+    def _run_completion(self, arg_parser:XTSArgumentParser):
+        os.environ['_ARGPARSE_COMPLETE'] = os.getenv('_XTS_COMPLETE')
+        completion = argparse_completion.get_completion(arg_parser)
+        if 'alias_name' in completion:
+            completion.remove('alias_name')
+        if len(completion) == 0 and (comp_words:=(os.getenv('COMP_WORDS').split()))[1] in xts_alias.load_aliases().keys():
+            os.environ['_YAML_RUNNER_COMPLETE'] = os.getenv('_XTS_COMPLETE')
+            alias = comp_words[1]
+            comp_words.remove('xts')
+            comp_words.remove(alias)
+            os.environ['COMP_WORDS'] = " ".join(comp_words)
+            self._run_yaml_runner(alias, comp_words)
+        else:
+            print('\n'.join(completion))
+        
     def run(self):
         """Run the XTS app.
 
         Raises:
             SystemExit: Raised when unrecogised arguments are given.
         """
-        args = self._parse_first_arg()
+        parser = self._setup_first_parser()
+        if os.getenv('_XTS_COMPLETE'):
+            self._run_completion(parser)
+            raise SystemExit(0)
+        if len(sys.argv) <= 1:
+            parser.print_help()
+            raise SystemExit(0)
+        args, remaining_args = parser.parse_known_args()
+        args = vars(args)
+        alias_name = args.get('alias_name')
+        match alias_name:
+            case 'alias':
+                alias_name_subparser = list(filter(lambda x: x.dest == 'alias_name',parser._actions))[0]
+                alias_subparser = alias_name_subparser.choices.get('alias')
+                xts_alias.run_alias_builtin(alias_subparser)
+            case None|'alias_name':
+                parser.print_help()
+                raise SystemExit(0)
+            case _:
+                self._run_yaml_runner(alias_name, remaining_args)
 
-        try:
-            yaml_runner = YamlRunner(
-                self._command_sections,
-                program='xts',
-                hierarchical=True,
-                fail_fast=True,
-                parser_class=XTSArgumentParser
-            )
-
-            _, _, exit_code = yaml_runner.run(args)
-            sys.exit(sorted(exit_code)[-1])
-
-        except Exception as e:
-            error(
-                'An unrecognised command caused an error\n\n'
-                f'Command Args: [{" ".join(args)}]\n\n'
-                f'{str(e)}'
-            )
 
 def main():
     XTS().run()

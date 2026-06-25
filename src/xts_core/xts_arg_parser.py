@@ -30,13 +30,13 @@ class XTSArgumentParser(argparse.ArgumentParser):
     """XTS Specific argument parser.
     """
     
-    def __init__(self,*args, **kwargs):
+    def __init__(self,*args, formatter_class=RichHelpFormatter, **kwargs):
         kwargs.pop('formatter_class','')
         super().__init__(*args,
                          **kwargs,
-                         formatter_class=RichHelpFormatter)
+                         formatter_class=formatter_class)
 
     def error(self, message):
         sys.stderr.write('error: %s\n' % message)
         self.print_help()
-        sys.exit(2)
+        raise SystemExit(2)

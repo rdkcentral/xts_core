@@ -33,13 +33,13 @@ Refresh:
 - `xts --alias --refresh <name>` re-downloads or re-copies the file from its original source
 """
 
-import argparse
-import os
 import hashlib
-import shutil
 import json
-import requests
+import shutil
+import sys
+import os
 from pathlib import Path
+import requests
 from urllib.parse import urlparse
 
 try:
@@ -398,8 +398,33 @@ def refresh_alias(alias_name: str) -> tuple[str, str]:
         add_alias(alias_name, cached, source)
         return (alias_name, cached)
 
+def setup_alias_parser(parser:XTSArgumentParser):
+    subparsers = parser.add_subparsers(dest='alias_action')
+    list_parser = subparsers.add_parser('list',
+                                        help='List all aliases.')
+    remove_parser = subparsers.add_parser('remove', aliases=['rm'], help='Remove an alias.')
+    remove_parser.add_argument('alias',
+                                action='store',
+                                help='Alias to remove.',
+                                default=None,
+                                choices=list(load_aliases().keys()))
+    refresh_parser = subparsers.add_parser('refresh', help='Refresh an alias from it\'s original source.')
+    refresh_parser.add_argument('alias',
+                              action='store',
+                              help='Alias to refresh.',
+                              default=None,
+                              metavar='ALIAS_NAME')
+    add_parser = subparsers.add_parser('add', help='Add an alias of an xts file URI.')
+    add_parser.add_argument('path',
+                             action='store',
+                             metavar='URI',
+                             default=None,
+                             help='URI of xts file to add.')
+    add_parser.add_argument('--name',
+                              action='store',
+                              help='Name to use for alias')
 
-def run_alias_builtin(argv: list[str]) -> int:
+def run_alias_builtin(alias_parser) -> int:
     """
     Built-in alias CLI.
 
@@ -413,86 +438,50 @@ def run_alias_builtin(argv: list[str]) -> int:
     Notes:
     - For directories, all *.xts files are added.
     """
-    alias_parser = XTSArgumentParser(prog='xts --alias', add_help=True)
-    alias_parser.add_argument('uri',
-                              action='store',
-                              default=None,
-                              help='URI of xts file to add or alias name',
-                              nargs='?')
-    alias_parser.add_argument('--list',
-                              action='store_true',
-                              default=False,
-                              help='List all aliases')
-    alias_parser.add_argument('--remove', '--rm',
-                              action='store',
-                              help='Remove alias',
-                              default=None,
-                              metavar='ALIAS_NAME',
-                              dest='remove')
-    alias_parser.add_argument('--refresh',
-                              action='store',
-                              help='Refresh alias from original source',
-                              default=None,
-                              metavar='ALIAS_NAME',
-                              dest='refresh')
-    alias_parser.add_argument('--add',
-                              action='store',
-                              metavar='URI',
-                              default=None,
-                              help='Add an alias of an xts file URI')
-    alias_parser.add_argument('--name',
-                              action='store',
-                              help='Name to use for alias')
-    # show help & current aliases if no args
-    if not argv:
+    if len(sys.argv) < 3:
         alias_parser.print_help()
-        print("\nCurrent aliases:")
-        list_aliases()
-        return 0
-    
-    args = alias_parser.parse_args(argv)
-    
-    if args.list:
-        list_aliases()
-        return 0
-    
-    if args.remove is not None:
-        if remove_alias(args.remove):
-            print(f"Removed alias: {args.remove}")
+        raise SystemExit(0)
+    args_dict = vars(alias_parser.parse_args(sys.argv[2:]))
+    action = args_dict.get('alias_action')
+    match action:
+        case 'list':
+            list_aliases()
             return 0
-        print(f"Alias not found: {args.remove}")
-        return 2
-
-    if args.refresh is not None:
-        try:
-            name, cached_path = refresh_alias(args.refresh)
-            print(f"Refreshed alias: {name} -> {cached_path}")
-            return 0
-        except (ValueError, FileNotFoundError) as e:
-            utils.error(str(e))
-            return 2
-        except Exception as e:
-            utils.error(f"Failed to refresh alias: {str(e)}")
+    
+        case'remove'|'rm':
+            if remove_alias(args_dict.get('alias')):
+                print(f"Removed alias: {args_dict.get('alias')}")
+                return 0
+            print(f"Alias not found: {args_dict.get('alias')}")
             return 2
 
-    if args.uri and args.add:
-        alias_parser.error('Provide the URI only once (either positional OR via "--add").')
-        return 2
+        case 'refresh':
+            try:
+                name, cached_path = refresh_alias(args_dict.get('alias'))
+                print(f"Refreshed alias: {name} -> {cached_path}")
+                return 0
+            except (ValueError, FileNotFoundError) as e:
+                utils.error(str(e))
+                return 2
+            except Exception as e:
+                utils.error(f"Failed to refresh alias: {str(e)}")
+                return 2
 
-    input_value = args.add or args.uri
-    if not input_value:
-        alias_parser.print_help()
-        return 2
+        case 'add':
+            input_value = args_dict.get('path')
+            if not input_value:
+                alias_parser.print_help()
+                return 2
 
-    try:
-        added = add_alias_from_input(input_value, args.name)
-    except (FileNotFoundError, ValueError) as e:
-        alias_parser.error(str(e))
-        return 2
-    except Exception as e:
-        utils.error(f"Failed to add alias: {str(e)}")
-        return 2
+            try:
+                added = add_alias_from_input(input_value, args_dict.get('name',None))
+            except (FileNotFoundError, ValueError) as e:
+                alias_parser.error(str(e))
+                return 2
+            except Exception as e:
+                utils.error(f"Failed to add alias: {str(e)}")
+                return 2
     
-    for k, v in added:
-        print(f"{k} -> {v}")
-    return 0
+            for k, v in added:
+                print(f"{k} -> {v}")
+            return 0
