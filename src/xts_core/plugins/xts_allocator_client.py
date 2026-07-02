@@ -76,6 +76,11 @@ class XTSAllocatorClient(BaseXTSPlugin):
         except requests.exceptions.RequestException as e:
             plugin_utils.error(f'Error during request: {e}')
 
+    @staticmethod
+    def send_request(method, url, data=None) -> dict:
+        """Compatibility wrapper expected by tests: delegates to _send_request."""
+        return XTSAllocatorClient._send_request(method, url, data)
+
 
     @staticmethod
     def _format_slots_list_to_table(response:list[dict]) -> Table:

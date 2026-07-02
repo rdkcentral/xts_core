@@ -118,6 +118,33 @@ def test_validate_xts_file_success(tmp_path):
     assert excinfo.value.code == 0
 
 
+def test_validate_cli_subcommand(monkeypatch, tmp_path):
+    valid_file = tmp_path / "valid.xts"
+    valid_file.write_text(
+        "run:\n"
+        "  hello_world:\n"
+        "    command: echo \"hello world\"\n"
+    )
+
+    monkeypatch.setattr(sys, "argv", ["xts", "validate", str(valid_file)])
+    with pytest.raises(SystemExit) as excinfo:
+        XTS().run()
+
+    assert excinfo.value.code == 0
+
+
+def test_validate_without_path_shows_usage(monkeypatch):
+    monkeypatch.setattr(sys, "argv", ["xts", "validate"])
+    with patch('sys.stdout', new=StringIO()) as mock_stdout:
+        with pytest.raises(SystemExit) as excinfo:
+            XTS().run()
+
+    assert excinfo.value.code == 1
+    output = mock_stdout.getvalue().lower()
+    assert "usage: xts validate" in output
+    assert "example:" in output
+
+
 def test_validate_xts_file_syntax_error(tmp_path):
     invalid_file = tmp_path / "invalid.xts"
     invalid_file.write_text("not: [valid: yaml")
@@ -150,6 +177,22 @@ def test_validate_xts_file_invalid_structure(tmp_path):
 
     assert excinfo.value.code == 1
     assert "lists are not supported" in mock_stdout.getvalue().lower()
+
+
+def test_validate_xts_file_invalid_command_string(tmp_path):
+    invalid_file = tmp_path / "invalid_command.xts"
+    invalid_file.write_text(
+        "run:\n"
+        "  hello_world:\n"
+        "    command: echo \"hello\n"
+    )
+
+    with patch('sys.stdout', new=StringIO()) as mock_stdout:
+        with pytest.raises(SystemExit) as excinfo:
+            XTS()._run_validate_command([str(invalid_file)])
+
+    assert excinfo.value.code == 1
+    assert "unbalanced quotes" in mock_stdout.getvalue().lower()
 
 
 def test_allocator_add_slot_missing_args(monkeypatch):
