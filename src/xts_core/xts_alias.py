@@ -2,11 +2,11 @@
 Alias management for XTS.
 
 Commands:
-  xts --alias --list
-  xts --alias <path|url|dir> [--name <name>]
-  xts --alias --add <path|url|dir> [--name <name>]
-  xts --alias --remove <name>
-  xts --alias --refresh <name>
+  xts alias list
+  xts alias <path|url|dir> [--name <name>]
+  xts alias add <path|url|dir> [--name <name>]
+  xts alias remove <name>
+  xts alias refresh <name>
 
 Behavior:
 - If a URL is provided:
@@ -27,10 +27,10 @@ Behavior:
     - aliases are created as '<prefix>/<filename_without_xts>'
 
 Remove:
-- `xts --alias --remove <name>` removes the alias mapping from aliases.json
+- `xts alias remove <name>` removes the alias mapping from aliases.json
 
 Refresh:
-- `xts --alias --refresh <name>` re-downloads or re-copies the file from its original source
+- `xts alias refresh <name>` re-downloads or re-copies the file from its original source
 """
 
 import hashlib

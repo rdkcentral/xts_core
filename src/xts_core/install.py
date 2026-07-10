@@ -93,19 +93,21 @@ def _linux_install():
                         f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
 
 def _install_bash(user_home: Path):
-    if (bashrc:=user_home.joinpath(Path('.bashrc'))).exists():
-        with open(user_home.joinpath(Path('.bashrc')), 'a') as f:
-            f.write('\n# XTS PATH\n')
-            f.write(f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
-            _install_bash_completion(bashrc)
-    elif (bash_profile:=user_home.joinpath(Path('.bash_profile'))).exists():
-        with open(user_home.joinpath(Path('.bash_profile')), 'a') as f:
-            f.write('\n# XTS PATH\n')
-            f.write(f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
-            _install_bash_completion(bash_profile)
+    rc_file = ''
+    if (bashrc := user_home.joinpath(Path('.bashrc'))).exists():
+         rc_file = bashrc
+    elif (bash_profile := user_home.joinpath(Path('.bash_profile'))).exists():
+         rc_file = bash_profile
     else:
         warning('Could not find .bashrc or .bash_profile to add xts to PATH. Please add the following line to your shell config file:\n' +
                 f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
+        return
+    rc_content = rc_file.read_text(encoding='utf-8')
+    if '# XTS PATH' not in rc_content:
+        with open(rc_file, 'a', encoding='utf-8') as f:
+            f.write('\n# XTS PATH\n')
+            f.write(f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
+    _install_bash_completion(rc_file)
 
 def _install_bash_completion(rc_file: Path):
     user_home = rc_file.parent

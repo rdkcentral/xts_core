@@ -248,7 +248,7 @@ class XTS():
             case 'alias':
                 alias_name_subparser = list(filter(lambda x: x.dest == 'alias_name',parser._actions))[0]
                 alias_subparser = alias_name_subparser.choices.get('alias')
-                SystemExit(xts_alias.run_alias_builtin(alias_subparser))
+                raise SystemExit(xts_alias.run_alias_builtin(alias_subparser))
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)
