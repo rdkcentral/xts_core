@@ -116,9 +116,11 @@ def _install_bash_completion(rc_file: Path):
     with importlib_resources.open_text(xts_core,'data/xts_bash_completion.sh', encoding='utf-8') as src, \
          open(bash_completion_script, 'w') as dst:
         dst.write(src.read())
-    with open(rc_file, 'a') as f:
-        f.write('\n# XTS bash completion\n')
-        f.write(f'source {bash_completion_dir}/xts_bash_completion.sh\n')
+    rc_content = rc_file.read_text(encoding='utf-8')
+    if 'xts_bash_completion.sh' not in rc_content:
+        with open(rc_file, 'a', encoding='utf-8') as f:
+            f.write('\n# XTS bash completion\n')
+            f.write(f'source {bash_completion_dir}/xts_bash_completion.sh\n')
 
 if __name__ == '__main__':
     main()

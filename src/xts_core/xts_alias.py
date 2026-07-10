@@ -408,7 +408,7 @@ def setup_alias_parser(parser:XTSArgumentParser):
                                 help='Alias to remove.',
                                 default=None,
                                 choices=list(load_aliases().keys()))
-    refresh_parser = subparsers.add_parser('refresh', help='Refresh an alias from it\'s original source.')
+    refresh_parser = subparsers.add_parser('refresh', help='Refresh an alias from its original source.')
     refresh_parser.add_argument('alias',
                               action='store',
                               help='Alias to refresh.',
@@ -429,11 +429,11 @@ def run_alias_builtin(alias_parser) -> int:
     Built-in alias CLI.
 
     Supported:
-      xts --alias --list
-      xts --alias --help
-      xts --alias --remove <name>
-      xts --alias --refresh <name>
-      xts --alias --add <path|url|dir> [--name <name>]
+      xts alias list
+      xts alias help
+      xts alias remove <name>
+      xts alias refresh <name>
+      xts alias add <path|url|dir> [--name <name>]
 
     Notes:
     - For directories, all *.xts files are added.

@@ -168,7 +168,7 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in option starting with '--' (currently supported: --alias)
+        - a built-in options (currently only "alias")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
         Direct .xts file usage from cwd or as the first argument is not supported.
 
@@ -208,10 +208,10 @@ class XTS():
             _, _, exit_code = yaml_runner.run(arguments)
             raise SystemExit(sorted(exit_code)[-1])
         except Exception as e:
-                    error(
-                        'An unrecognised command caused an error\n\n'
-                        f'Command Args: [{" ".join(arguments)}]\n\n'
-                        f'{str(e)}')
+            error(
+                'An unrecognised command caused an error\n\n'
+                f'Command Args: [{" ".join(arguments)}]\n\n'
+                f'{str(e)}')
     
     def _run_completion(self, arg_parser:XTSArgumentParser):
         os.environ['_ARGPARSE_COMPLETE'] = os.getenv('_XTS_COMPLETE')
@@ -248,7 +248,7 @@ class XTS():
             case 'alias':
                 alias_name_subparser = list(filter(lambda x: x.dest == 'alias_name',parser._actions))[0]
                 alias_subparser = alias_name_subparser.choices.get('alias')
-                xts_alias.run_alias_builtin(alias_subparser)
+                SystemExit(xts_alias.run_alias_builtin(alias_subparser))
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)
