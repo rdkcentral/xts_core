@@ -78,38 +78,38 @@ All XTS usage is now via **aliases**. You must add an alias for each .xts file (
 
 - **From a local file:**
   ```sh
-  xts --alias /path/to/yourfile.xts [--name myalias]
+  xts alias /path/to/yourfile.xts [--name myalias]
   # or
-  xts --alias --add /path/to/yourfile.xts [--name myalias]
+  xts alias add /path/to/yourfile.xts [--name myalias]
   ```
 - **From a remote URL:**
   ```sh
-  xts --alias https://example.com/yourfile.xts [--name myalias]
+  xts alias https://example.com/yourfile.xts [--name myalias]
   # or
-  xts --alias --add https://example.com/yourfile.xts [--name myalias]
+  xts alias add https://example.com/yourfile.xts [--name myalias]
   ```
 - **From a directory (adds all .xts files in the directory):**
   ```sh
-  xts --alias /path/to/dir/ [--name prefix]
+  xts alias /path/to/dir/ [--name prefix]
   # aliases will be named as prefix/filename
   ```
 
 ### Listing Aliases
 
 ```sh
-xts --alias --list
+xts alias list
 ```
 
 ### Removing an Alias
 
 ```sh
-xts --alias --remove myalias
+xts alias remove myalias
 ```
 
 ### Refreshing an Alias (re-download or re-copy from original source)
 
 ```sh
-xts --alias --refresh myalias
+xts alias refresh myalias
 ```
 
 ### Using an Alias to Run Commands

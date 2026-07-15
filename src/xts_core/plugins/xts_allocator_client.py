@@ -506,7 +506,7 @@ class XTSAllocatorClient(BaseXTSPlugin):
                     state,
                     owner_email]):
             plugin_utils.error('At least one field must be provided for update.')
-            sys.exit(1)
+            raise SystemExit(1)
         # Required fields
         payload = {
             'slot_id': slot_id
