@@ -176,7 +176,7 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in options (currently only "alias" and "validate")
+        - a built-in options ("alias" or "validate")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
 
         Returns:
