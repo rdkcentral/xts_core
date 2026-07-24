@@ -47,10 +47,7 @@ except ImportError:
 
 import yaml.scanner
 from yaml_runner import YamlRunner
-try:
-    import argparse_completion
-except Exception:
-    argparse_completion = None
+import argparse_completion
 
 try:
     from .plugins import XTSAllocatorClient
@@ -206,31 +203,6 @@ class XTS():
         validate_parser.add_argument('path', nargs='?', help='Path to the .xts file to validate')
         return first_arg_parser
 
-    # Backwards-compatible wrapper expected by older tests
-    def _parse_first_arg(self):
-        parser = self._setup_first_parser()
-        if len(sys.argv) <= 1:
-            parser.print_help()
-            raise SystemExit(0)
-
-        # Pre-check the first non-program argument to give a friendlier message
-        first_arg = sys.argv[1]
-        known_aliases = set(xts_alias.load_aliases().keys())
-        if not first_arg.startswith('--') and first_arg not in {'alias', 'validate'} and first_arg not in known_aliases:
-            print('Unknown alias')
-            raise SystemExit(1)
-
-        args, remaining_args = parser.parse_known_args()
-        args = vars(args)
-        alias_name = args.get('alias_name')
-        if alias_name == 'alias':
-            alias_name_subparser = list(filter(lambda x: x.dest == 'alias_name',parser._actions))[0]
-            alias_subparser = alias_name_subparser.choices.get('alias')
-            xts_alias.run_alias_builtin(alias_subparser)
-        else:
-            # Attempt to run the yaml alias; if resolution fails, error will be raised
-            self._run_yaml_runner(alias_name, remaining_args)
-
     def _validate_command_value(self, value, path: str):
         """Validate that a command entry is a string or a list of strings."""
         def _validate_shell_command(command: str, command_path: str):
@@ -244,16 +216,13 @@ class XTS():
 
         if isinstance(value, str):
             _validate_shell_command(value, path)
-            return
-
-        if isinstance(value, list):
+        elif isinstance(value, list):
             if not all(isinstance(item, str) for item in value):
                 raise ValueError(f'Invalid command list at "{path}": all entries must be strings')
             for item in value:
                 _validate_shell_command(item, path)
-            return
-
-        raise ValueError(f'Invalid command definition at "{path}": expected a string or list of strings')
+        else:
+            raise ValueError(f'Invalid command definition at "{path}": expected a string or list of strings')
 
     def _validate_xts_structure(self, node, path: str = 'root'):
         """Validate the expected .xts structure recursively."""
@@ -280,34 +249,23 @@ class XTS():
         Validate an .xts file path provided in argv. Exits with code 0 on success
         and 1 on any error. Prints brief messages to stdout.
         """
-        if not argv or len(argv) == 0 or not argv[0]:
-            validate_help_parser = XTSArgumentParser(
-                prog='xts validate',
-                description='Validate an .xts file and report syntax issues',
-            )
-            validate_help_parser.add_argument(
-                'path',
-                nargs='?',
-                help='Path to the .xts file to validate',
-            )
+        validate_help_parser = XTSArgumentParser(
+            prog='xts validate',
+            description='Validate an .xts file and report syntax issues',
+        )
+        validate_help_parser.add_argument(
+            'path',
+            nargs='?',
+            help='Path to the .xts file to validate',
+        )
+
+        args = validate_help_parser.parse_args(argv)
+        if not args.path:
             validate_help_parser.print_help()
             print('Example: xts validate examples/example.xts')
             raise SystemExit(1)
 
-        if argv[0] in {'-h', '--help'}:
-            validate_help_parser = XTSArgumentParser(
-                prog='xts validate',
-                description='Validate an .xts file and report syntax issues',
-            )
-            validate_help_parser.add_argument(
-                'path',
-                nargs='?',
-                help='Path to the .xts file to validate',
-            )
-            validate_help_parser.print_help()
-            print('Example: xts validate examples/example.xts')
-            raise SystemExit(0)
-        path = argv[0]
+        path = args.path
         if not os.path.exists(path):
             print('xts config specified does not exist')
             raise SystemExit(1)
