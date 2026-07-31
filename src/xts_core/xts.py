@@ -36,6 +36,7 @@ parsing and command execution.
 import argparse
 import os
 import re
+import shlex
 import sys
 
 import yaml
@@ -145,6 +146,7 @@ class XTS():
     def _get_command_sections(self) -> dict:
         """Extract command sections from loaded XTS configuration."""
         command_sections = {}
+        self._ignored_sections = []
 
         def _is_command_section(subdict: dict) -> bool:
             for key, value in subdict.items():
@@ -153,13 +155,16 @@ class XTS():
                 elif isinstance(value, dict) and _is_command_section(value):
                     return True
             return False
-        
+
         if not isinstance(self._xts_config, dict):
             return command_sections
 
         for key, value in self._xts_config.items():
-            if isinstance(value, dict) and _is_command_section(value):
-                command_sections[key] = value
+            if isinstance(value, dict):
+                if _is_command_section(value):
+                    command_sections[key] = value
+                else:
+                    self._ignored_sections.append(key)
 
         return command_sections
     
@@ -168,9 +173,8 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in options (currently only "alias")
+        - a built-in options ("alias" or "validate")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
-        Direct .xts file usage from cwd or as the first argument is not supported.
 
         Returns:
             list[str]: Remaining args starting with the command name, e.g. ["run", ...].
@@ -190,7 +194,105 @@ class XTS():
         alias_parser = first_arg_subparsers.add_parser('alias',
                                                         help='Manage aliases (add, list, remove)')
         xts_alias.setup_alias_parser(alias_parser)
+
+        validate_parser = first_arg_subparsers.add_parser(
+            'validate',
+            help='Validate an .xts file and report syntax issues',
+            add_help=False,
+        )
+        validate_parser.add_argument('path', nargs='?', help='Path to the .xts file to validate')
         return first_arg_parser
+
+    def _validate_command_value(self, value, path: str):
+        """Validate that a command entry is a string or a list of strings."""
+        def _validate_shell_command(command: str, command_path: str):
+            try:
+                shlex.split(command, posix=True)
+            except ValueError as exc:
+                message = str(exc)
+                if 'closing quotation' in message.lower() or 'unmatched' in message.lower():
+                    raise ValueError(f'Invalid shell command at "{command_path}": unbalanced quotes') from exc
+                raise ValueError(f'Invalid shell command at "{command_path}": {message}') from exc
+
+        if isinstance(value, str):
+            _validate_shell_command(value, path)
+        elif isinstance(value, list):
+            if not all(isinstance(item, str) for item in value):
+                raise ValueError(f'Invalid command list at "{path}": all entries must be strings')
+            for item in value:
+                _validate_shell_command(item, path)
+        else:
+            raise ValueError(f'Invalid command definition at "{path}": expected a string or list of strings')
+
+    def _validate_xts_structure(self, node, path: str = 'root'):
+        """Validate the expected .xts structure recursively."""
+        if isinstance(node, dict):
+            for key, value in node.items():
+                node_path = f'{path}/{key}'
+                if key == 'command':
+                    self._validate_command_value(value, node_path)
+                elif isinstance(value, list):
+                    raise ValueError(
+                        f'Invalid .xts structure at "{node_path}": lists are not supported '
+                        'in xts command sections'
+                    )
+                elif isinstance(value, dict):
+                    self._validate_xts_structure(value, node_path)
+        elif isinstance(node, list):
+            raise ValueError(
+                f'Invalid .xts structure at "{path}": root-level lists are not supported '
+                'in xts configuration'
+            )
+
+    def _run_validate_command(self, argv: list[str]):
+        """
+        Validate an .xts file path provided in argv. Exits with code 0 on success
+        and 1 on any error. Prints brief messages to stdout.
+        """
+        validate_help_parser = XTSArgumentParser(
+            prog='xts validate',
+            description='Validate an .xts file and report syntax issues',
+        )
+        validate_help_parser.add_argument(
+            'path',
+            nargs='?',
+            help='Path to the .xts file to validate',
+        )
+
+        args = validate_help_parser.parse_args(argv)
+        if not args.path:
+            validate_help_parser.print_help()
+            print('Example: xts validate examples/example.xts')
+            raise SystemExit(1)
+
+        path = args.path
+        if not os.path.exists(path):
+            print('xts config specified does not exist')
+            raise SystemExit(1)
+        try:
+            with open(path, 'r', encoding='utf-8') as stream:
+                data = yaml.load(stream, SafeLoader)
+        except (yaml.scanner.ScannerError, yaml.parser.ParserError, yaml.YAMLError):
+            print('The xts file is incorrectly formatted: {}'.format(path))
+            raise SystemExit(1)
+
+        try:
+            if not isinstance(data, dict):
+                raise ValueError('Invalid xts structure: root must be a mapping')
+            self._xts_config = data
+            self._command_sections = self._get_command_sections()
+            self._validate_xts_structure(data)
+            if self._ignored_sections:
+                for ignored in self._ignored_sections:
+                    print(f'Warning: section "{ignored}" will be ignored because it contains no command key')
+            if not self._command_sections:
+                print(f'No command sections found in xts file: {path}')
+                raise SystemExit(1)
+            print(f'Validation passed for: {path}')
+            raise SystemExit(0)
+        except ValueError as exc:
+            print(str(exc))
+            raise SystemExit(1) from exc
     
     def _run_yaml_runner(self, alias:str, arguments:list[str]):
         resolved_xts_path = xts_alias.resolve_alias_to_xts_path(alias)
@@ -249,6 +351,8 @@ class XTS():
                 alias_name_subparser = list(filter(lambda x: x.dest == 'alias_name',parser._actions))[0]
                 alias_subparser = alias_name_subparser.choices.get('alias')
                 raise SystemExit(xts_alias.run_alias_builtin(alias_subparser))
+            case 'validate':
+                self._run_validate_command(remaining_args if remaining_args else [args.get('path', '')])
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)
