@@ -4,7 +4,10 @@
 # * If not stated otherwise in this file or this component's LICENSE file the
 # * following copyright and licenses apply:
 # *
-        
+# * Copyright 2024 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License. 
 # * You may obtain a copy of the License at
 # *
 # *
@@ -368,32 +371,6 @@ class XTS():
             case _:
                 self._run_yaml_runner(alias_name, remaining_args)
 
-        try:
-            try:
-                yaml_runner = YamlRunner(
-                    self._command_sections,
-                    program='xts',
-                    hierarchical=True,
-                    fail_fast=True,
-                    parser_class=XTSArgumentParser
-                )
-            except TypeError:
-                yaml_runner = YamlRunner(
-                    self._command_sections,
-                    program='xts',
-                    hierarchical=True,
-                    fail_fast=True
-                )
-
-            _, _, exit_code = yaml_runner.run(args)
-            sys.exit(sorted(exit_code)[-1])
-
-        except Exception as e:
-            error(
-                'An unrecognised command caused an error\n\n'
-                f'Command Args: [{" ".join(args)}]\n\n'
-                f'{str(e)}'
-            )
 
     def _find_demo_example_config(self) -> str:
         """Locate the example XTS config used by the interactive demo."""

@@ -2,6 +2,7 @@
 
 import sys
 
+import rich
 from yaml_runner import YamlRunner
 
 try:
@@ -18,6 +19,49 @@ try:
     from .utils import info, error
 except ImportError:
     from xts_core.utils import info, error
+
+
+def _format_demo_command(command: str) -> str:
+    """Return a richly formatted command string for demo output."""
+    return f'[bold bright_cyan]{command}[/bold bright_cyan]'
+
+
+def _print_section_title(title: str) -> None:
+    """Print a demo section title with a visible separator and bold black text."""
+    rich.print()
+    rich.print('[bold bright_white]______________________________________________________________[/bold bright_white]')
+    rich.print()
+    rich.print(f'[bold bright_white]{title}[/bold bright_white]')
+    rich.print()
+
+
+def _print_demo_command(command: str) -> None:
+    """Print a highlighted demo command before execution."""
+    rich.print()
+    rich.print(f'[bold green]COMMAND TO EXECUTE:[/bold green] {_format_demo_command(command)}')
+
+
+def _print_command_options(description: str, options: list[str] | None = None) -> None:
+    """Print command option descriptions for demo commands."""
+    rich.print(f'[dim]{description}[/dim]')
+    if options:
+        for option in options:
+            rich.print(f'[dim]  • {option}[/dim]')
+
+
+def _run_xts_help_command(argv: list[str]) -> int:
+    """Run XTS with arguments and return the SystemExit code."""
+    original_argv = sys.argv[:]
+    try:
+        sys.argv = ['xts', *argv]
+        from xts_core.xts import XTS
+
+        XTS().run()
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 0
+    finally:
+        sys.argv = original_argv
+    return 0
 
 
 def run_demo_alias_builtin(argv: list[str]) -> int:
@@ -46,21 +90,53 @@ def run_demo(xts_instance) -> None:
 
     add_command = f'xts alias add --name {alias_name} {example_url}'
     list_command = 'xts alias list'
+    alias_help_command = f'xts {alias_name} --help'
     run_command = f'xts {alias_name} run hello_world'
     remove_command = f'xts alias remove {alias_name}'
 
+    _print_section_title('Section 1: Show top-level help for XTS.')
+    _print_demo_command('xts --help')
+    _print_command_options(
+        'Display the root XTS command help, including built-in commands and general options.',
+        ['--help: Show this help message and exit.']
+    )
     print()
-    info('Section 1: Add a demo alias from the public example URL.')
-    info(f'  Command: {add_command}')
+    input('Press Enter to execute this command and continue... ')
+    _run_xts_help_command(['--help'])
+
+    _print_section_title('Section 2: Add a demo alias from the public example URL.')
+    _print_demo_command(add_command)
+    _print_command_options(
+        'Add a named alias for an XTS configuration from a URL.',
+        [
+            'URI: remote .xts file to add as the alias source.',
+            '--name <alias>: explicit alias name to store instead of the default derived name.',
+        ]
+    )
+    print()
     input('Press Enter to execute this command and continue... ')
     try:
         run_demo_alias_builtin(['add', '--name', alias_name, example_url])
     except Exception as exc:
         error(f'Failed to add demo alias: {exc}')
 
+    _print_section_title('Section 3: Show help for the demo alias.')
+    _print_demo_command(alias_help_command)
+    _print_command_options(
+        'Display help for the named alias command, showing available subcommands or options for this alias.',
+        ['--help: Show help for the alias command and exit.']
+    )
     print()
-    info('Section 2: List available aliases.')
-    info(f'  Command: {list_command}')
+    input('Press Enter to execute this command and continue... ')
+    _run_xts_help_command([alias_name, '--help'])
+
+    _print_section_title('Section 4: List available aliases.')
+    _print_demo_command(list_command)
+    _print_command_options(
+        'List all aliases currently configured in ~/.xts/aliases.json.',
+        ['list: display alias names and their source paths.']
+    )
+    print()
     input('Press Enter to execute this command and continue... ')
     run_demo_alias_builtin(['list'])
 
@@ -86,9 +162,13 @@ def run_demo(xts_instance) -> None:
             fail_fast=True
         )
 
+    _print_section_title('Section 5: Run the demo alias command.')
+    _print_demo_command(run_command)
+    _print_command_options(
+        'Run the `hello_world` command from the alias-defined XTS file.',
+        ['run hello_world: execute the hello_world command section in the alias.']
+    )
     print()
-    info('Section 3: Run the demo alias command.')
-    info(f'  Command: {run_command}')
     input('Press Enter to execute this command and continue... ')
     try:
         _, _, exit_code = yaml_runner.run(['run', 'hello_world'])
@@ -99,14 +179,13 @@ def run_demo(xts_instance) -> None:
     except Exception as exc:
         error(f'Failed to run demo alias command: {exc}')
 
-    print()
-    info('Section 4: Remove the demo alias.')
-    info(f'  Command: {remove_command}')
-    input('Press Enter to execute this command and continue... ')
-    try:
-        run_demo_alias_builtin(['remove', alias_name])
-    except Exception as exc:
-        error(f'Failed to remove demo alias: {exc}')
+    _print_section_title('Section 6: Alias removal is optional.')
+    _print_demo_command(remove_command)
+    _print_command_options(
+        'This command removes the alias from your local alias list, but it will not be executed by the demo.',
+        ['<alias>: name of the alias to remove.']
+    )
+    info('The alias is still available after this demo. Run the above command if you want to remove it later.')
 
     print()
     info('Demo finished. You can now add your own aliases with xts alias add --name <alias> <path-or-url>.')
