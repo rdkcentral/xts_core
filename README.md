@@ -136,6 +136,15 @@ xts validate /path/to/file.xts
 ```
 
 This command reports syntax errors clearly and exits with code `0` for valid files or `1` for invalid files.
+### Interactive Demo
+
+A new interactive demo command is available to guide first-time users through alias setup and execution:
+
+```sh
+xts demo
+```
+
+It will add a sample alias from `examples/hello_world.xts`, list the alias, and execute the example `hello_world` command.
 
 ## Example .xts File
 

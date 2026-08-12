@@ -7,7 +7,7 @@
 # * Copyright 2024 RDK Management
 # *
 # * Licensed under the Apache License, Version 2.0 (the "License");
-# * you may not use this file except in compliance with the License.
+# * you may not use this file except in compliance with the License. 
 # * You may obtain a copy of the License at
 # *
 # *
@@ -38,6 +38,7 @@ import os
 import re
 import shlex
 import sys
+from pathlib import Path
 
 import yaml
 try:
@@ -61,8 +62,10 @@ except ImportError:
 
 try:
     from . import xts_alias
+    from .demo import run_demo
 except ImportError:
     from xts_core import xts_alias
+    from xts_core.demo import run_demo
 
 try:
     from .xts_arg_parser import XTSArgumentParser
@@ -173,7 +176,7 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in options ("alias" or "validate")
+        - a built-in option ("alias", "validate", or "demo")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
 
         Returns:
@@ -201,6 +204,12 @@ class XTS():
             add_help=False,
         )
         validate_parser.add_argument('path', nargs='?', help='Path to the .xts file to validate')
+
+        first_arg_subparsers.add_parser(
+            'demo',
+            help='Run the interactive XTS demo',
+            add_help=False,
+        )
         return first_arg_parser
 
     def _validate_command_value(self, value, path: str):
@@ -241,8 +250,7 @@ class XTS():
         elif isinstance(node, list):
             raise ValueError(
                 f'Invalid .xts structure at "{path}": root-level lists are not supported '
-                'in xts configuration'
-            )
+                'in xts configuration')
 
     def _run_validate_command(self, argv: list[str]):
         """
@@ -353,6 +361,9 @@ class XTS():
                 raise SystemExit(xts_alias.run_alias_builtin(alias_subparser))
             case 'validate':
                 self._run_validate_command(remaining_args if remaining_args else [args.get('path', '')])
+            case 'demo':
+                run_demo(self)
+                raise SystemExit(0)
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)
@@ -360,8 +371,10 @@ class XTS():
                 self._run_yaml_runner(alias_name, remaining_args)
 
 
+
 def main():
     XTS().run()
 
 if __name__ == "__main__":
     main()
+    

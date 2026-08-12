@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import patch
 from io import StringIO
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '../src'))
 
 from xts_core.xts import XTS
 from xts_core.xts_alias import (
@@ -82,6 +82,54 @@ def test_missing_alias(monkeypatch, mock_alias_config):
             pass
         output = mock_stdout.getvalue()
         assert "Unknown alias" in output or "error" in output.lower()
+
+
+def test_demo_builtin_runs_interactive_demo(monkeypatch, tmp_path):
+    """Test that xts demo runs the interactive demo flow."""
+    demo_file = tmp_path / 'hello_world.xts'
+    demo_file.write_text('run:\n  hello_world:\n    command: echo "hello world"\n', encoding='utf-8')
+
+    monkeypatch.setattr('xts_core.xts_alias.add_alias_from_input', lambda path, name: [(name, str(path))])
+    monkeypatch.setattr('xts_core.xts_alias.list_aliases', lambda: None)
+    monkeypatch.setattr('xts_core.xts_alias.refresh_alias', lambda name: (name, str(demo_file)))
+    monkeypatch.setattr('xts_core.xts_alias.remove_alias', lambda name: True)
+
+    class FakeRunner:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def run(self, args):
+            assert args == ['run', 'hello_world']
+            return (None, None, [0])
+
+    monkeypatch.setattr('xts_core.xts.YamlRunner', FakeRunner)
+    monkeypatch.setattr('builtins.input', lambda prompt='': '')
+    monkeypatch.setattr('xts_core.xts.XTS._find_demo_example_config', lambda self: str(demo_file))
+
+    with patch('sys.stdout', new_callable=StringIO) as mock_stdout:
+        sys.argv = ['xts', 'demo']
+        from xts_core.xts import XTS
+        with pytest.raises(SystemExit) as excinfo:
+            XTS().run()
+        assert excinfo.value.code == 0
+        output = mock_stdout.getvalue()
+        assert 'Welcome to the XTS interactive demo' in output
+        assert 'Section 1: Alias help command.' in output
+        assert 'Command: xts --alias --help' in output
+        assert 'Section 2: Add a demo alias for the example file.' in output
+        assert 'Command: xts --alias --add' in output
+        assert 'Section 3: List available aliases.' in output
+        assert 'Command: xts --alias --list' in output
+        assert 'Section 4: Run the demo alias command.' in output
+        assert 'Command: xts demo-example run hello_world' in output
+        assert 'Section 5: Remove the demo alias.' in output
+        assert 'Command: xts --alias --remove demo-example' in output
+        assert 'Section 6: Refresh the demo alias.' in output
+        assert 'Command: xts --alias --refresh demo-example' in output
+        assert 'demo-example ->' in output
+        assert 'Removed alias: demo-example' in output
+        assert 'Demo finished. You can now add your own aliases' in output
+
 
 def test_malformed_xts_file(monkeypatch, mock_alias_config, tmp_path):
     """Test registering and using a malformed .xts file."""
