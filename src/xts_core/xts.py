@@ -38,7 +38,6 @@ import os
 import re
 import shlex
 import sys
-import json
 from pathlib import Path
 
 import yaml
@@ -363,7 +362,7 @@ class XTS():
             case 'validate':
                 self._run_validate_command(remaining_args if remaining_args else [args.get('path', '')])
             case 'demo':
-                self._run_demo()
+                run_demo(self)
                 raise SystemExit(0)
             case None|'alias_name':
                 parser.print_help()
@@ -387,25 +386,6 @@ class XTS():
             'Could not locate demo example config. Ensure examples/hello_world.xts exists.'
         )
 
-    def _collect_command_paths(self, section: dict, prefix: list[str] | None = None) -> list[list[str]]:
-        """Recursively collect leaf command paths from a command section."""
-        prefix = prefix or []
-        paths: list[list[str]] = []
-
-        for key, value in section.items():
-            if not isinstance(value, dict):
-                continue
-
-            if 'command' in value:
-                paths.append(prefix + [key])
-
-            paths.extend(self._collect_command_paths(value, prefix + [key]))
-
-        return paths
-
-    def _run_demo(self) -> None:
-        """Run the interactive XTS demo built-in command."""
-        run_demo(self)
 
 def main():
     XTS().run()
