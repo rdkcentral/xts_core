@@ -371,21 +371,6 @@ class XTS():
                 self._run_yaml_runner(alias_name, remaining_args)
 
 
-    def _find_demo_example_config(self) -> str:
-        """Locate the example XTS config used by the interactive demo."""
-        package_root = Path(__file__).resolve().parents[2]
-        example_config = package_root / 'examples' / 'hello_world.xts'
-        if example_config.exists():
-            return str(example_config)
-
-        alt_example = Path.cwd() / 'examples' / 'hello_world.xts'
-        if alt_example.exists():
-            return str(alt_example)
-
-        error(
-            'Could not locate demo example config. Ensure examples/hello_world.xts exists.'
-        )
-
 
 def main():
     XTS().run()
