@@ -63,9 +63,11 @@ except ImportError:
 try:
     from . import xts_alias
     from .demo import run_demo
+    from .create import run_create
 except ImportError:
     from xts_core import xts_alias
     from xts_core.demo import run_demo
+    from xts_core.create import run_create
 
 try:
     from .xts_arg_parser import XTSArgumentParser
@@ -176,7 +178,7 @@ class XTS():
         """
         Parse CLI arguments and set up argparse for all commands.
         The first argument must be either:
-        - a built-in option ("alias", "validate", or "demo")
+        - a built-in option ("alias", "validate", "create", or "demo")
         - an alias name (resolved via ~/.xts/aliases.json to an .xts file path)
 
         Returns:
@@ -209,6 +211,16 @@ class XTS():
             'demo',
             help='Run the interactive XTS demo',
             add_help=False,
+        )
+        create_parser = first_arg_subparsers.add_parser(
+            'create',
+            help='Interactively create an .xts file',
+            add_help=False,
+        )
+        create_parser.add_argument(
+            'path',
+            nargs='?',
+            help='Output path for the new .xts file',
         )
         return first_arg_parser
 
@@ -364,6 +376,8 @@ class XTS():
             case 'demo':
                 run_demo(self)
                 raise SystemExit(0)
+            case 'create':
+                raise SystemExit(run_create(args.get('path')))
             case None|'alias_name':
                 parser.print_help()
                 raise SystemExit(0)

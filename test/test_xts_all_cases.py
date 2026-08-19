@@ -1,6 +1,7 @@
 import os
 import sys
 import pytest
+import yaml
 from unittest.mock import patch
 from io import StringIO
 
@@ -14,6 +15,62 @@ from xts_core.xts_alias import (
     load_aliases
 )
 from xts_core.plugins.xts_allocator_client import XTSAllocatorClient
+
+
+def test_create_wizard_writes_xts_file(monkeypatch, tmp_path):
+    from xts_core.create import run_create
+
+    output_file = tmp_path / "created.xts"
+    answers = iter([
+        "run",
+        "hello",
+        "Say hello",
+        "echo hello",
+        "n",
+    ])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+
+    assert run_create(str(output_file)) == 0
+    assert yaml.safe_load(output_file.read_text(encoding="utf-8")) == {
+        "run": {
+            "hello": {
+                "description": "Say hello",
+                "command": "echo hello",
+            }
+        }
+    }
+
+
+def test_create_wizard_does_not_overwrite_without_confirmation(monkeypatch, tmp_path):
+    from xts_core.create import run_create
+
+    output_file = tmp_path / "existing.xts"
+    output_file.write_text("original", encoding="utf-8")
+    monkeypatch.setattr("builtins.input", lambda _prompt: "n")
+
+    assert run_create(str(output_file)) == 1
+    assert output_file.read_text(encoding="utf-8") == "original"
+
+
+def test_create_wizard_rejects_non_xts_output(tmp_path):
+    from xts_core.create import run_create
+
+    assert run_create(str(tmp_path / "created.yaml")) == 1
+    assert not (tmp_path / "created.yaml").exists()
+
+
+def test_create_cli_dispatches_to_wizard(monkeypatch):
+    from xts_core import xts
+
+    called = []
+    monkeypatch.setattr(xts, "run_create", lambda path: called.append(path) or 0)
+    monkeypatch.setattr(sys, "argv", ["xts", "create", "new.xts"])
+
+    with pytest.raises(SystemExit) as result:
+        XTS().run()
+
+    assert result.value.code == 0
+    assert called == ["new.xts"]
 
 @pytest.fixture
 def mock_alias_config(monkeypatch, tmp_path):
