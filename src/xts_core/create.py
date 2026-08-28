@@ -3,31 +3,17 @@
 from pathlib import Path
 
 import yaml
+from rich.prompt import Confirm, Prompt
 
 
 def _prompt(message: str, default: str | None = None) -> str:
     """Read a non-empty value, using the default when the user presses Enter."""
-    suffix = f" [{default}]" if default else ""
-    while True:
-        value = input(f"{message}{suffix}: ").strip()
-        if value:
-            return value
-        if default is not None:
-            return default
-        print("A value is required.")
+    return Prompt.ask(message, default=default)
 
 
 def _prompt_yes_no(message: str) -> bool:
     """Read a yes/no answer, defaulting to no."""
-    while True:
-        answer = input(f"{message} [y/N]: ").strip().lower()
-        if not answer:
-            return False
-        if answer in {"y", "yes"}:
-            return True
-        if answer in {"n", "no"}:
-            return False
-        print("Please answer yes or no.")
+    return Confirm.ask(message, default=False)
 
 
 def _prompt_command(command_number: int) -> tuple[str, dict[str, str]]:
@@ -42,7 +28,7 @@ def _prompt_command(command_number: int) -> tuple[str, dict[str, str]]:
 def run_create(output_path: str | None = None) -> int:
     """Run the interactive XTS file creation wizard."""
     print("Create an XTS configuration")
-    path = Path(output_path or _prompt("Output file", "example.xts")).expanduser()
+    path = Path(output_path or _prompt("Output file")).expanduser()
 
     if path.suffix.lower() != ".xts":
         print(f"Output file must use the .xts extension: {path}")
@@ -52,7 +38,7 @@ def run_create(output_path: str | None = None) -> int:
         print(f"Cancelled; existing file was not changed: {path}")
         return 1
 
-    section = _prompt("Command section", "run")
+    section = _prompt("Command section")
     commands: dict[str, dict[str, str]] = {}
     command_number = 1
     while True:
