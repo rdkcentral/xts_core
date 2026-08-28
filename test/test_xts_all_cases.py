@@ -27,6 +27,7 @@ def test_create_wizard_writes_xts_file(monkeypatch, tmp_path):
         "Say hello",
         "echo hello",
         "n",
+        "n",
     ])
     monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
 
@@ -39,6 +40,53 @@ def test_create_wizard_writes_xts_file(monkeypatch, tmp_path):
             }
         }
     }
+
+
+def test_create_wizard_adds_xts_extension_and_alias(monkeypatch, tmp_path):
+    from xts_core import xts_alias
+    from xts_core.create import run_create
+
+    output_file = tmp_path / "created.xts"
+    added = []
+    answers = iter([
+        "run",
+        "hello",
+        "Say hello",
+        "echo hello",
+        "n",
+        "y",
+        "greeting",
+    ])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+    monkeypatch.setattr(
+        xts_alias,
+        "add_alias_from_input",
+        lambda path, name: added.append((path, name)),
+    )
+
+    assert run_create(str(tmp_path / "created")) == 0
+    assert output_file.exists()
+    assert added == [(str(output_file), "greeting")]
+
+
+def test_create_wizard_requires_output_path_and_section(monkeypatch, tmp_path):
+    from xts_core.create import run_create
+
+    output_file = tmp_path / "created.xts"
+    answers = iter([
+        "",
+        str(output_file),
+        "",
+        "run",
+        "hello",
+        "Say hello",
+        "echo hello",
+        "n",
+    ])
+    monkeypatch.setattr("builtins.input", lambda _prompt: next(answers))
+
+    assert run_create() == 0
+    assert output_file.exists()
 
 
 def test_create_wizard_does_not_overwrite_without_confirmation(monkeypatch, tmp_path):

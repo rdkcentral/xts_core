@@ -1,3 +1,26 @@
+#!/usr/bin/env python3
+#** *****************************************************************************
+# *
+# * If not stated otherwise in this file or this component's LICENSE file the
+# * following copyright and licenses apply:
+# *
+# * Copyright 2024 RDK Management
+# *
+# * Licensed under the Apache License, Version 2.0 (the "License");
+# * you may not use this file except in compliance with the License.
+# * You may obtain a copy of the License at
+# *
+# *
+# http://www.apache.org/licenses/LICENSE-2.0
+# *
+# * Unless required by applicable law or agreed to in writing, software
+# * distributed under the License is distributed on an "AS IS" BASIS,
+# * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# * See the License for the specific language governing permissions and
+# * limitations under the License.
+# *
+#* ******************************************************************************
+
 """Interactive creation of XTS configuration files."""
 
 from pathlib import Path
@@ -29,6 +52,8 @@ def run_create(output_path: str | None = None) -> int:
     """Run the interactive XTS file creation wizard."""
     print("Create an XTS configuration")
     path = Path(output_path or _prompt("Output file")).expanduser()
+    if not path.suffix:
+        path = path.with_name(f"{path.name}.xts")
 
     if path.suffix.lower() != ".xts":
         print(f"Output file must use the .xts extension: {path}")
@@ -57,4 +82,12 @@ def run_create(output_path: str | None = None) -> int:
         encoding="utf-8",
     )
     print(f"Created XTS file: {path}")
+
+    if _prompt_yes_no("Add this file as an alias?"):
+        from .xts_alias import add_alias_from_input
+
+        alias_name = _prompt("Alias name", path.stem)
+        add_alias_from_input(str(path), alias_name)
+        print(f"Added alias: {alias_name}")
+
     return 0
