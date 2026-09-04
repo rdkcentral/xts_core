@@ -29,9 +29,15 @@ import yaml
 from rich.prompt import Confirm, Prompt
 
 
-def _prompt(message: str, default: str | None = None) -> str:
-    """Read a non-empty value, using the default when the user presses Enter."""
-    return Prompt.ask(message, default=default)
+def _prompt(
+    message: str, default: str | None = None, required: bool = False
+) -> str:
+    """Read a value, optionally requiring the user to provide one."""
+    while True:
+        value = Prompt.ask(message, default=default)
+        if not required or (value is not None and value.strip()):
+            return value
+        print(f"{message} cannot be blank.")
 
 
 def _prompt_yes_no(message: str) -> bool:
@@ -43,7 +49,7 @@ def _prompt_command(command_number: int) -> tuple[str, dict[str, str]]:
     """Collect one command and return its name and XTS definition."""
     print(f"\nCommand {command_number}")
     name = _prompt("Command name")
-    description = _prompt("Description", f"Run {name}.")
+    description = _prompt("Description", required=True)
     command = _prompt("Shell command")
     return name, {"description": description, "command": command}
 
