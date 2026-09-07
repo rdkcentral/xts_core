@@ -48,7 +48,7 @@ def _prompt_yes_no(message: str) -> bool:
 def _prompt_command(command_number: int) -> tuple[str, dict[str, str]]:
     """Collect one command and return its name and XTS definition."""
     print(f"\nCommand {command_number}")
-    name = _prompt("Command name")
+    name = _prompt("Command name", required=True)
     description = _prompt("Description", required=True)
     command = _prompt("Shell command")
     return name, {"description": description, "command": command}
@@ -57,7 +57,7 @@ def _prompt_command(command_number: int) -> tuple[str, dict[str, str]]:
 def run_create(output_path: str | None = None) -> int:
     """Run the interactive XTS file creation wizard."""
     print("Create an XTS configuration")
-    path = Path(output_path or _prompt("Output file")).expanduser()
+    path = Path(output_path or _prompt("Output file", required=True)).expanduser()
     if not path.suffix:
         path = path.with_name(f"{path.name}.xts")
 
@@ -69,7 +69,7 @@ def run_create(output_path: str | None = None) -> int:
         print(f"Cancelled; existing file was not changed: {path}")
         return 1
 
-    section = _prompt("Command section")
+    section = _prompt("Command section", required=True)
     commands: dict[str, dict[str, str]] = {}
     command_number = 1
     while True:
