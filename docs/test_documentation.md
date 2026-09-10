@@ -11,7 +11,6 @@ The test specification covers the following scenarios:
 ### Handling of .xts Files ###
 
 #### Structured .xts File ####
-
 Preconditions: A valid .xts file with structured data is available.
 
 Expected Behavior:
@@ -39,10 +38,8 @@ Preconditions: No .xts file is provided.
 Expected Behavior:
 
 - XTS should log a clear error message indicating the file is missing.
-
-- Execution of .xts test cases should not proceed.
-
-- AllocatorClient commands should remain functional and usable.
+- Execution of test cases and allocator-related subcommands via `xts` should not proceed.
+- This scenario validates correct error handling in alias-only mode; no allocator commands are expected to run when invoked through `xts` without a valid alias.
 
 #### Multiple .xts Files ####
 

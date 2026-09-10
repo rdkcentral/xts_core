@@ -22,13 +22,18 @@
 #* ******************************************************************************
 
 import datetime
+import importlib_resources
 import os
 from pathlib import Path
 import platform
 import subprocess
 import tempfile
+import xts_core
 
 from .utils import info, error, warning
+
+SCRIPT_PATH = Path(__file__).absolute()
+SCRIPT_DIR = Path(os.path.dirname(SCRIPT_PATH))
 
 def main():
     if 'Linux' in platform.platform():
@@ -37,8 +42,6 @@ def main():
         error('Unfortunately XTS does not currently support your OS')
 
 def _linux_install():
-    script_path = Path(__file__).absolute()
-    script_dir = Path(os.path.dirname(script_path))
     user_home = Path('.').home()
     xts_dir = user_home.joinpath(Path('.xts'))
     bin_dir = xts_dir.joinpath(Path('bin'))
@@ -50,7 +53,7 @@ def _linux_install():
     os.makedirs(log_dir, exist_ok=True)
     result = subprocess.run(['pyinstaller',
                     '--onefile',
-                    f'{script_dir}/xts.py',
+                    f'{SCRIPT_DIR}/xts.py',
                     '--name',
                     'xts',
                     '--distpath',
@@ -79,10 +82,47 @@ def _linux_install():
                 'Raise an issue on xts_core for more help:\n'+
                 'https://github.com/rdkcentral/xts_core/issues/new?template=01-bugs.yml')
     else:
-        info('XTS has been installed successfully.\n'+
-                'Please run the following commands:\n' +
-                f'\texport PATH="{bin_dir}:$PATH"\n' +
-                'To permanently install this, add the export command as a line in your ~/.bashrc file')
+        shell = os.environ.get('SHELL','')
+        match shell:
+            case '/bin/bash':
+                _install_bash(user_home)
+                info('XTS has been installed successfully.\n')
+            case _:
+                warning('XTS has been installed successfully, but we could not automatically add xts to your PATH.\n' +
+                        'Please add the following line to your shell config file:\n' +
+                        f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
+
+def _install_bash(user_home: Path):
+    rc_file = ''
+    if (bashrc := user_home.joinpath(Path('.bashrc'))).exists():
+         rc_file = bashrc
+    elif (bash_profile := user_home.joinpath(Path('.bash_profile'))).exists():
+         rc_file = bash_profile
+    else:
+        warning('Could not find .bashrc or .bash_profile to add xts to PATH. Please add the following line to your shell config file:\n' +
+                f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
+        return
+    rc_content = rc_file.read_text(encoding='utf-8')
+    if '# XTS PATH' not in rc_content:
+        with open(rc_file, 'a', encoding='utf-8') as f:
+            f.write('\n# XTS PATH\n')
+            f.write(f'export PATH="{user_home.joinpath(Path(".xts/bin"))}:$PATH"\n')
+    _install_bash_completion(rc_file)
+
+def _install_bash_completion(rc_file: Path):
+    user_home = rc_file.parent
+    bash_completion_dir = user_home.joinpath(Path('.bash_completion.d'))
+    if not bash_completion_dir.exists():
+        os.makedirs(bash_completion_dir)
+    bash_completion_script = bash_completion_dir.joinpath(Path('xts_bash_completion.sh'))
+    with importlib_resources.open_text(xts_core,'data/xts_bash_completion.sh', encoding='utf-8') as src, \
+         open(bash_completion_script, 'w') as dst:
+        dst.write(src.read())
+    rc_content = rc_file.read_text(encoding='utf-8')
+    if 'xts_bash_completion.sh' not in rc_content:
+        with open(rc_file, 'a', encoding='utf-8') as f:
+            f.write('\n# XTS bash completion\n')
+            f.write(f'source {bash_completion_dir}/xts_bash_completion.sh\n')
 
 if __name__ == '__main__':
     main()
